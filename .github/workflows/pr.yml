@@ -3,6 +3,7 @@ name: PR Build CI
 on:
   pull_request:
     branches: [ "kt-rewrite" ]
+  workflow_dispatch:
 
 jobs:
   build:
