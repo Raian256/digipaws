@@ -84,16 +84,10 @@ class AppBlockerService : BaseBlockingService() {
         super.onAccessibilityEvent(event)
 
         try {
-            antiUninstallBlocker.doAntiUninstallCheck(event)
-        } catch (t: Throwable) {
-            Log.e("error", t.message.toString())
-            crashLogger.logNonFatalError(Exception(t))
-        }
-
-        try {
             appBlocker.doAppBlockerCheck(event)
             grayScaleFilter.doGrayscaleCheck(event)
             focusModeBlocker.doFocusModeCheck(event)
+            antiUninstallBlocker.doAntiUninstallCheck(event)
         } catch (t: Throwable) {
             Log.e("error",t.message.toString())
             crashLogger.logNonFatalError(Exception(t))

@@ -1,8 +1,5 @@
 package neth.iecal.curbox.blockers
 
-import android.os.Handler
-import android.os.Looper
-import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import kotlinx.coroutines.CoroutineScope
@@ -13,71 +10,46 @@ import neth.iecal.curbox.data.models.AntiUninstallConfig
 import neth.iecal.curbox.services.BaseBlockingService
 import java.util.Locale
 
+/**
+ * Pulls the user back to home when a settings-app window shows the Curbox
+ * label, so anti-uninstall can't be disabled via the accessibility services list.
+ *
+ * Known gap: Android 12+ hides Safety Center window content from non-system
+ * accessibility services (rootInActiveWindow returns null), so the
+ * Settings → Security & Privacy → "Review app with full device access" flow
+ * cannot be intercepted from here and will always bypass this blocker.
+ */
 class AntiUninstallBlocker : BaseBlocker() {
 
     companion object {
-        private const val TAG = "AntiUninstall"
-
         private val SETTINGS_PACKAGES = setOf(
             "com.android.settings",
             "com.google.android.packageinstaller",
             "com.android.packageinstaller",
             "com.google.android.permissioncontroller",
             "com.android.permissioncontroller",
-            "com.google.android.safetycenter",
             "com.miui.securitycenter",
             "com.samsung.android.app.appsedge"
         )
 
         private val APP_LABEL_NEEDLES = listOf("curbox")
-        private const val POLL_INTERVAL_MS = 1000L
     }
 
     private lateinit var service: BaseBlockingService
     @Volatile private var config: AntiUninstallConfig = AntiUninstallConfig()
     private var lastBlockTimestamp: Float = 0f
-    private var lastLoggedPkg: String? = null
-    private var lastLoggedEnabled: Boolean? = null
-
-    private val handler = Handler(Looper.getMainLooper())
-    private val pollRunnable = object : Runnable {
-        override fun run() {
-            try {
-                runCheck(source = "poll")
-            } catch (t: Throwable) {
-                Log.e(TAG, "poll threw", t)
-            }
-            handler.postDelayed(this, POLL_INTERVAL_MS)
-        }
-    }
 
     fun doAntiUninstallCheck(event: AccessibilityEvent?) {
-        runCheck(source = "event")
-    }
-
-    private fun runCheck(source: String) {
-        if (lastLoggedEnabled != config.isEnabled) {
-            Log.d(TAG, "config.isEnabled=${config.isEnabled} mode=${config.mode}")
-            lastLoggedEnabled = config.isEnabled
-        }
         if (!config.isEnabled) return
-        val root = service.rootInActiveWindow
-        if (root == null) {
-            Log.d(TAG, "[$source] rootInActiveWindow is null")
-            return
-        }
+        event ?: return
+
+        val pkg = event.packageName?.toString() ?: return
+        if (!SETTINGS_PACKAGES.contains(pkg)) return
+
+        val root = service.rootInActiveWindow ?: return
         try {
-            val pkg = root.packageName?.toString()
-            if (pkg != lastLoggedPkg) {
-                Log.d(TAG, "[$source] active window pkg=$pkg")
-                lastLoggedPkg = pkg
-            }
-            if (pkg != null && !SETTINGS_PACKAGES.contains(pkg)) return
-            val matched = nodeTreeMentionsApp(root)
-            Log.d(TAG, "[$source] pkg=$pkg matchedCurbox=$matched")
-            if (matched) {
+            if (nodeTreeMentionsApp(root)) {
                 if (isDelayOver(lastBlockTimestamp, 500)) {
-                    Log.w(TAG, "[$source] BLOCKING: pressing home")
                     service.pressHome()
                     lastBlockTimestamp = android.os.SystemClock.uptimeMillis().toFloat()
                 }
@@ -109,13 +81,10 @@ class AntiUninstallBlocker : BaseBlocker() {
 
     fun setupBlocker(service: BaseBlockingService) {
         this.service = service
-        Log.d(TAG, "setupBlocker called")
         CoroutineScope(Dispatchers.IO).launch {
             service.dataStoreManager.settings.collectLatest { settings ->
                 config = settings.antiUninstallConfig
-                Log.d(TAG, "config updated: isEnabled=${config.isEnabled} mode=${config.mode} block=${config.blockConfigChanges}")
             }
         }
-        handler.postDelayed(pollRunnable, POLL_INTERVAL_MS)
     }
 }
