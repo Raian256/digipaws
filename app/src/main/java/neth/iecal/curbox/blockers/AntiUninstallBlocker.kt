@@ -21,7 +21,7 @@ class AntiUninstallBlocker : BaseBlocker() {
             "com.samsung.android.app.appsedge"
         )
 
-        private val APP_LABEL_NEEDLES = listOf("curbox", "digipaws")
+        private val APP_LABEL_NEEDLES = listOf("curbox")
     }
 
     private lateinit var service: BaseBlockingService
