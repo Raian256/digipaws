@@ -53,10 +53,7 @@ class AntiUninstallBlocker : BaseBlocker() {
 
     private fun nodeTreeMentionsApp(node: AccessibilityNodeInfo?): Boolean {
         if (node == null) return false
-        val text = node.text?.toString()?.lowercase(Locale.getDefault())
-        if (text != null && APP_LABEL_NEEDLES.any { text.contains(it) }) {
-            return true
-        }
+        if (nodeMatches(node.text) || nodeMatches(node.contentDescription)) return true
         for (i in 0 until node.childCount) {
             val child = node.getChild(i) ?: continue
             val found = try {
@@ -67,6 +64,11 @@ class AntiUninstallBlocker : BaseBlocker() {
             if (found) return true
         }
         return false
+    }
+
+    private fun nodeMatches(value: CharSequence?): Boolean {
+        val lowered = value?.toString()?.lowercase(Locale.getDefault()) ?: return false
+        return APP_LABEL_NEEDLES.any { lowered.contains(it) }
     }
 
     fun setupBlocker(service: BaseBlockingService) {
