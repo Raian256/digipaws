@@ -17,6 +17,9 @@ class AntiUninstallBlocker : BaseBlocker() {
             "com.android.settings",
             "com.google.android.packageinstaller",
             "com.android.packageinstaller",
+            "com.google.android.permissioncontroller",
+            "com.android.permissioncontroller",
+            "com.google.android.safetycenter",
             "com.miui.securitycenter",
             "com.samsung.android.app.appsedge"
         )
