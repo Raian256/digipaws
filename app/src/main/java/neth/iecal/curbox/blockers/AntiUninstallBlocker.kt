@@ -1,5 +1,7 @@
 package neth.iecal.curbox.blockers
 
+import android.os.Handler
+import android.os.Looper
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import kotlinx.coroutines.CoroutineScope
@@ -18,7 +20,6 @@ class AntiUninstallBlocker : BaseBlocker() {
             "com.google.android.packageinstaller",
             "com.android.packageinstaller",
             "com.google.android.permissioncontroller",
-            "com.android.permissioncontroller.safetycenter.ui.SafetyCenterActivity",
             "com.android.permissioncontroller",
             "com.google.android.safetycenter",
             "com.miui.securitycenter",
@@ -26,21 +27,34 @@ class AntiUninstallBlocker : BaseBlocker() {
         )
 
         private val APP_LABEL_NEEDLES = listOf("curbox")
+        private const val POLL_INTERVAL_MS = 1000L
     }
 
     private lateinit var service: BaseBlockingService
     @Volatile private var config: AntiUninstallConfig = AntiUninstallConfig()
     private var lastBlockTimestamp: Float = 0f
 
+    private val handler = Handler(Looper.getMainLooper())
+    private val pollRunnable = object : Runnable {
+        override fun run() {
+            try {
+                runCheck()
+            } catch (_: Throwable) {
+            }
+            handler.postDelayed(this, POLL_INTERVAL_MS)
+        }
+    }
+
     fun doAntiUninstallCheck(event: AccessibilityEvent?) {
+        runCheck()
+    }
+
+    private fun runCheck() {
         if (!config.isEnabled) return
-        event ?: return
-
-        val pkg = event.packageName?.toString() ?: return
-        if (!SETTINGS_PACKAGES.contains(pkg)) return
-
         val root = service.rootInActiveWindow ?: return
         try {
+            val pkg = root.packageName?.toString()
+            if (pkg != null && !SETTINGS_PACKAGES.contains(pkg)) return
             if (nodeTreeMentionsApp(root)) {
                 if (isDelayOver(lastBlockTimestamp, 500)) {
                     service.pressHome()
@@ -79,5 +93,6 @@ class AntiUninstallBlocker : BaseBlocker() {
                 config = settings.antiUninstallConfig
             }
         }
+        handler.postDelayed(pollRunnable, POLL_INTERVAL_MS)
     }
 }
