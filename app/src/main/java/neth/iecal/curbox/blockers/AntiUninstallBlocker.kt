@@ -10,6 +10,15 @@ import neth.iecal.curbox.data.models.AntiUninstallConfig
 import neth.iecal.curbox.services.BaseBlockingService
 import java.util.Locale
 
+/**
+ * Pulls the user back to home when a settings-app window shows the Curbox
+ * label, so anti-uninstall can't be disabled via the accessibility services list.
+ *
+ * Known gap: Android 12+ hides Safety Center window content from non-system
+ * accessibility services (rootInActiveWindow returns null), so the
+ * Settings → Security & Privacy → "Review app with full device access" flow
+ * cannot be intercepted from here and will always bypass this blocker.
+ */
 class AntiUninstallBlocker : BaseBlocker() {
 
     companion object {
@@ -19,7 +28,6 @@ class AntiUninstallBlocker : BaseBlocker() {
             "com.android.packageinstaller",
             "com.google.android.permissioncontroller",
             "com.android.permissioncontroller",
-            "com.google.android.safetycenter",
             "com.miui.securitycenter",
             "com.samsung.android.app.appsedge"
         )
