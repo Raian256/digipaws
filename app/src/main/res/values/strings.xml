@@ -74,6 +74,28 @@
         <item quantity="one">%d day left before Anti-Uninstall unlocks.</item>
         <item quantity="other">%d days left before Anti-Uninstall unlocks.</item>
     </plurals>
+
+    <!-- Anti-Uninstall: cooldown mode -->
+    <string name="anti_uninstall_cooldown_mode">Cooldown mode</string>
+    <string name="anti_uninstall_cooldown_mode_desc">Wait a set number of minutes to disable.</string>
+    <string name="anti_uninstall_cooldown_mode_detailed">Pick how many minutes you\'ll have to wait after requesting removal. The timer runs whether or not Curbox is open.</string>
+    <string name="anti_uninstall_cooldown_minutes">Wait time (minutes)</string>
+    <string name="anti_uninstall_cooldown_minutes_invalid">Enter a positive number of minutes.</string>
+    <string name="anti_uninstall_status_cooldown_mode">Mode: Cooldown</string>
+    <plurals name="anti_uninstall_status_cooldown_details">
+        <item quantity="one">Tap Remove to begin the %d-minute wait.</item>
+        <item quantity="other">Tap Remove to begin the %d-minute wait.</item>
+    </plurals>
+    <string name="anti_uninstall_status_cooldown_waiting">Removal requested</string>
+    <string name="anti_uninstall_status_cooldown_waiting_details">Unlocks in %1$s.</string>
+    <string name="anti_uninstall_status_cooldown_ready">Ready to remove</string>
+    <string name="anti_uninstall_status_cooldown_ready_details">Wait period complete. Tap Remove to disable.</string>
+    <plurals name="anti_uninstall_cooldown_start_message">
+        <item quantity="one">You\'ll need to wait %d minute before Anti-Uninstall can be disabled. The timer keeps running even if you close Curbox.</item>
+        <item quantity="other">You\'ll need to wait %d minutes before Anti-Uninstall can be disabled. The timer keeps running even if you close Curbox.</item>
+    </plurals>
+    <string name="anti_uninstall_cooldown_still_waiting">%1$s remaining before Anti-Uninstall unlocks.</string>
+    <string name="anti_uninstall_cancel_removal">Cancel removal</string>
     <string name="configure_warning_screen">Warning Screen</string>
     <string name="proceed_in">Please wait %1$d seconds before pressing proceed</string>
     <string name="select_all">Select all</string>

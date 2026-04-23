@@ -65,9 +65,25 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
                 android:paddingStart="32dp"
                 android:paddingEnd="0dp"
                 android:text="@string/anti_uninstall_timed_mode_desc"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="13sp" />
+
+            <RadioButton
+                android:id="@+id/mode_cooldown"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/anti_uninstall_cooldown_mode" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingStart="32dp"
+                android:paddingEnd="0dp"
+                android:text="@string/anti_uninstall_cooldown_mode_desc"
                 android:textColor="?attr/colorOnSurfaceVariant"
                 android:textSize="13sp" />
         </RadioGroup>

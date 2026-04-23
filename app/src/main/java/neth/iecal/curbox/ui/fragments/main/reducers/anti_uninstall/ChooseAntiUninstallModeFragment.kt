@@ -33,6 +33,7 @@ class ChooseAntiUninstallModeFragment : Fragment() {
         binding.btnNext.setOnClickListener {
             val fragmentId = when (binding.radioGroup.checkedRadioButtonId) {
                 binding.modeTimed.id -> SetupTimedModeFragment.FRAGMENT_ID
+                binding.modeCooldown.id -> SetupCooldownModeFragment.FRAGMENT_ID
                 else -> SetupPasswordModeFragment.FRAGMENT_ID
             }
             startActivity(Intent(requireContext(), FragmentActivity::class.java).apply {

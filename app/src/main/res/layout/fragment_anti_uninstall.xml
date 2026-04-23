@@ -129,6 +129,15 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="20dp"
                     android:text="@string/anti_uninstall_remove" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_cancel_removal"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/anti_uninstall_cancel_removal"
+                    android:visibility="gone" />
             </LinearLayout>
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
