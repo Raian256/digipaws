@@ -57,6 +57,8 @@
     <string name="anti_uninstall_password_mode_detailed">Pick a password you\'ll remember. You will need it to disable Anti-Uninstall later.</string>
     <string name="anti_uninstall_timed_mode_detailed">Pick the date on which Anti-Uninstall should unlock. Until then, it cannot be removed.</string>
     <string name="anti_uninstall_turn_on">Turn on Anti-Uninstall</string>
+    <string name="password">Password</string>
+    <string name="confirm_password">Confirm password</string>
     <string name="anti_uninstall_password_empty">Password cannot be empty</string>
     <string name="anti_uninstall_confirm_password_empty">Please confirm your password</string>
     <string name="anti_uninstall_passwords_do_not_match">Passwords do not match</string>
