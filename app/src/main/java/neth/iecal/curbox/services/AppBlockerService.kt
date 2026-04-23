@@ -17,6 +17,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import neth.iecal.curbox.CrashLogger
 import neth.iecal.curbox.anti_stimulants.GrayScaleFilter
+import neth.iecal.curbox.blockers.AntiUninstallBlocker
 import neth.iecal.curbox.blockers.AppBlocker
 import neth.iecal.curbox.blockers.FocusModeBlocker
 import neth.iecal.curbox.blockers.KeywordBlocker
@@ -33,6 +34,7 @@ class AppBlockerService : BaseBlockingService() {
     private val reelBlocker = ReelBlocker()
     private var keywordBlocker = KeywordBlocker()
     private val viewBlocker = ViewBlocker()
+    private val antiUninstallBlocker = AntiUninstallBlocker()
     private var pickerNotification: ElementPickerNotification? = null
 
     private val pickerReceiver = object : BroadcastReceiver() {
@@ -85,6 +87,7 @@ class AppBlockerService : BaseBlockingService() {
             appBlocker.doAppBlockerCheck(event)
             grayScaleFilter.doGrayscaleCheck(event)
             focusModeBlocker.doFocusModeCheck(event)
+            antiUninstallBlocker.doAntiUninstallCheck(event)
         } catch (t: Throwable) {
             Log.e("error",t.message.toString())
             crashLogger.logNonFatalError(Exception(t))
@@ -133,6 +136,7 @@ class AppBlockerService : BaseBlockingService() {
         viewBlocker.setupElementPicker()
         pickerNotification = ElementPickerNotification(this)
         grayScaleFilter.setup(this)
+        antiUninstallBlocker.setupBlocker(this)
 
         focusModeBlocker.setupReceivers()
         appBlocker.setupReceivers()
