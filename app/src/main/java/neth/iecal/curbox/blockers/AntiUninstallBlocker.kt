@@ -18,6 +18,7 @@ class AntiUninstallBlocker : BaseBlocker() {
             "com.google.android.packageinstaller",
             "com.android.packageinstaller",
             "com.google.android.permissioncontroller",
+            "com.android.permissioncontroller.safetycenter.ui.SafetyCenterActivity",
             "com.android.permissioncontroller",
             "com.google.android.safetycenter",
             "com.miui.securitycenter",
