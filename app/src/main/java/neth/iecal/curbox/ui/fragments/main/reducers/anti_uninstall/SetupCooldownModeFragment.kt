@@ -8,7 +8,6 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import neth.iecal.curbox.Constants
@@ -27,7 +26,6 @@ class SetupCooldownModeFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val dataStoreManager by lazy { DataStoreManager(requireContext().applicationContext) }
-    private val target by lazy { LockSetupTarget.fromArgs(this) }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -63,30 +61,13 @@ class SetupCooldownModeFragment : Fragment() {
     private fun saveAndExit(minutes: Int) {
         viewLifecycleOwner.lifecycleScope.launch {
             withContext(Dispatchers.IO) {
-                when (target) {
-                    LockSetupTarget.ANTI_UNINSTALL -> {
-                        dataStoreManager.updateAntiUninstallConfig(
-                            AntiUninstallConfig(
-                                isEnabled = true,
-                                mode = Constants.ANTI_UNINSTALL_COOLDOWN_MODE,
-                                cooldownMinutes = minutes
-                            )
-                        )
-                    }
-                    LockSetupTarget.ANTI_MODIFICATIONS -> {
-                        val current = dataStoreManager.settings.first().antiModificationsConfig
-                        dataStoreManager.updateAntiModificationsConfig(
-                            current.copy(
-                                isEnabled = true,
-                                mode = Constants.ANTI_UNINSTALL_COOLDOWN_MODE,
-                                cooldownMinutes = minutes,
-                                passwordHash = "",
-                                endTimeInMillis = 0L,
-                                removalRequestedAt = 0L
-                            )
-                        )
-                    }
-                }
+                dataStoreManager.updateAntiUninstallConfig(
+                    AntiUninstallConfig(
+                        isEnabled = true,
+                        mode = Constants.ANTI_UNINSTALL_COOLDOWN_MODE,
+                        cooldownMinutes = minutes
+                    )
+                )
             }
             requireActivity().finish()
         }

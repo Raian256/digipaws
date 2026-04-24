@@ -46,10 +46,6 @@ class AutoFocusFragment : Fragment() {
         }
 
         binding.fabAddGroup.setOnClickListener {
-            if (antiMods.isEnabled && antiMods.lockAllAutoFocusSchedules) {
-                AntiModificationsGate.refuseWithSnackbar(binding.root)
-                return@setOnClickListener
-            }
             val intent = Intent(requireContext(), neth.iecal.curbox.ui.activity.FragmentActivity::class.java).apply {
                 putExtra("fragment", CreateAutoFocusGroupFragment.FRAGMENT_ID)
             }

@@ -14,6 +14,8 @@ import neth.iecal.curbox.ui.fragments.main.reducers.analytics.IntentsLogFragment
 import neth.iecal.curbox.ui.fragments.main.reducers.anti_stimulants.grayscale.CreateGrayscaleGroupFragment
 import neth.iecal.curbox.ui.fragments.main.reducers.anti_stimulants.grayscale.GrayscaleFragment
 import neth.iecal.curbox.ui.fragments.main.reducers.anti_modifications.AntiModificationsFragment
+import neth.iecal.curbox.ui.fragments.main.reducers.anti_modifications.AntiModificationsGroupDetailsFragment
+import neth.iecal.curbox.ui.fragments.main.reducers.anti_modifications.CreateAntiModificationsGroupFragment
 import neth.iecal.curbox.ui.fragments.main.reducers.anti_uninstall.AntiUninstallFragment
 import neth.iecal.curbox.ui.fragments.main.reducers.anti_uninstall.ChooseAntiUninstallModeFragment
 import neth.iecal.curbox.ui.fragments.main.reducers.anti_uninstall.SetupCooldownModeFragment
@@ -69,6 +71,8 @@ class FragmentActivity : AppCompatActivity() {
             SetupTimedModeFragment.FRAGMENT_ID,
             SetupCooldownModeFragment.FRAGMENT_ID,
             AntiModificationsFragment.FRAGMENT_ID,
+            CreateAntiModificationsGroupFragment.FRAGMENT_ID,
+            AntiModificationsGroupDetailsFragment.FRAGMENT_ID,
             KeywordBlockerFragment.FRAGMENT_ID -> {
                 // Hide bottom nav for these standalone fragments
                 bottomNav.visibility = android.view.View.GONE
@@ -93,6 +97,8 @@ class FragmentActivity : AppCompatActivity() {
                     SetupTimedModeFragment.FRAGMENT_ID -> SetupTimedModeFragment()
                     SetupCooldownModeFragment.FRAGMENT_ID -> SetupCooldownModeFragment()
                     AntiModificationsFragment.FRAGMENT_ID -> AntiModificationsFragment()
+                    CreateAntiModificationsGroupFragment.FRAGMENT_ID -> CreateAntiModificationsGroupFragment()
+                    AntiModificationsGroupDetailsFragment.FRAGMENT_ID -> AntiModificationsGroupDetailsFragment()
                     else -> AccessibilityGuide()
                 }
                 fragment.arguments = intent.extras

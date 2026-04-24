@@ -58,10 +58,6 @@ class ViewBlockerFragment : Fragment() {
         }
 
         binding.btnAddRule.setOnClickListener {
-            if (antiMods.isEnabled && antiMods.lockAllViewBlockers) {
-                AntiModificationsGate.refuseWithSnackbar(binding.root)
-                return@setOnClickListener
-            }
             val ruleText = binding.editCustomRule.text?.toString()?.trim() ?: ""
             if (ruleText.isEmpty()) {
                 Toast.makeText(requireContext(), "Empty Rule", Toast.LENGTH_SHORT).show()
@@ -72,10 +68,6 @@ class ViewBlockerFragment : Fragment() {
         }
 
         binding.btnPickElement.setOnClickListener {
-            if (antiMods.isEnabled && antiMods.lockAllViewBlockers) {
-                AntiModificationsGate.refuseWithSnackbar(binding.root)
-                return@setOnClickListener
-            }
             val intent = Intent(INTENT_ACTION_SHOW_PICKER_NOTIFICATION)
             intent.setPackage(requireContext().packageName)
             requireContext().sendBroadcast(intent)
@@ -233,7 +225,7 @@ class ViewBlockerFragment : Fragment() {
             val cleanRule = rule.removePrefix("!DISABLED!")
             val label = extractLabel(cleanRule)
 
-            val customLocked = antiMods.isEnabled && antiMods.lockAllViewBlockers
+            val customLocked = AntiModificationsGate.isViewBlockerLocked(antiMods, rule)
             val onClickAction = {
                 if (customLocked) {
                     AntiModificationsGate.refuseWithSnackbar(binding.root)

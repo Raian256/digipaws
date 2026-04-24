@@ -71,10 +71,6 @@ class KeywordBlockerFragment : Fragment() {
         }
 
         binding.btnAddKeyword.setOnClickListener {
-            if (antiMods.isEnabled && antiMods.lockAllKeywords) {
-                AntiModificationsGate.refuseWithSnackbar(binding.root)
-                return@setOnClickListener
-            }
             var keyword = binding.etKeyword.text.toString()
             if (keyword.isNotBlank()) {
                 if (Patterns.WEB_URL.matcher(keyword).matches()) {

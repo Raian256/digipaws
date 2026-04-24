@@ -8,7 +8,6 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import neth.iecal.curbox.Constants
@@ -28,7 +27,6 @@ class SetupPasswordModeFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val dataStoreManager by lazy { DataStoreManager(requireContext().applicationContext) }
-    private val target by lazy { LockSetupTarget.fromArgs(this) }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -78,30 +76,13 @@ class SetupPasswordModeFragment : Fragment() {
     private fun saveAndExit(password: String) {
         viewLifecycleOwner.lifecycleScope.launch {
             withContext(Dispatchers.IO) {
-                when (target) {
-                    LockSetupTarget.ANTI_UNINSTALL -> {
-                        dataStoreManager.updateAntiUninstallConfig(
-                            AntiUninstallConfig(
-                                isEnabled = true,
-                                mode = Constants.ANTI_UNINSTALL_PASSWORD_MODE,
-                                passwordHash = HashUtils.sha256(password)
-                            )
-                        )
-                    }
-                    LockSetupTarget.ANTI_MODIFICATIONS -> {
-                        val current = dataStoreManager.settings.first().antiModificationsConfig
-                        dataStoreManager.updateAntiModificationsConfig(
-                            current.copy(
-                                isEnabled = true,
-                                mode = Constants.ANTI_UNINSTALL_PASSWORD_MODE,
-                                passwordHash = HashUtils.sha256(password),
-                                endTimeInMillis = 0L,
-                                cooldownMinutes = 0,
-                                removalRequestedAt = 0L
-                            )
-                        )
-                    }
-                }
+                dataStoreManager.updateAntiUninstallConfig(
+                    AntiUninstallConfig(
+                        isEnabled = true,
+                        mode = Constants.ANTI_UNINSTALL_PASSWORD_MODE,
+                        passwordHash = HashUtils.sha256(password)
+                    )
+                )
             }
             requireActivity().finish()
         }

@@ -59,7 +59,6 @@ class AntiUninstallFragment : Fragment() {
         binding.btnEnable.setOnClickListener {
             startActivity(Intent(requireContext(), FragmentActivity::class.java).apply {
                 putExtra("fragment", ChooseAntiUninstallModeFragment.FRAGMENT_ID)
-                putExtra(LockSetupTarget.ARG_TARGET, LockSetupTarget.ANTI_UNINSTALL.key)
             })
         }
 

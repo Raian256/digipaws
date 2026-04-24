@@ -57,10 +57,6 @@ class AppBlockerGroupsFragment : Fragment() {
         }
 
         fabAddGroup.setOnClickListener {
-            if (antiMods.isEnabled && antiMods.lockAllAppPauseSchedules) {
-                AntiModificationsGate.refuseWithSnackbar(view)
-                return@setOnClickListener
-            }
             val intent = Intent(requireContext(), FragmentActivity::class.java).apply {
                 putExtra("fragment", CreateAppGroupFragment.FRAGMENT_ID)
             }
