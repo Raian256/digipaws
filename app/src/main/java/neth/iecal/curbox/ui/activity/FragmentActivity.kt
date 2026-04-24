@@ -13,6 +13,7 @@ import neth.iecal.curbox.ui.fragments.main.reducers.ReducersFragment
 import neth.iecal.curbox.ui.fragments.main.reducers.analytics.IntentsLogFragment
 import neth.iecal.curbox.ui.fragments.main.reducers.anti_stimulants.grayscale.CreateGrayscaleGroupFragment
 import neth.iecal.curbox.ui.fragments.main.reducers.anti_stimulants.grayscale.GrayscaleFragment
+import neth.iecal.curbox.ui.fragments.main.reducers.anti_modifications.AntiModificationsFragment
 import neth.iecal.curbox.ui.fragments.main.reducers.anti_uninstall.AntiUninstallFragment
 import neth.iecal.curbox.ui.fragments.main.reducers.anti_uninstall.ChooseAntiUninstallModeFragment
 import neth.iecal.curbox.ui.fragments.main.reducers.anti_uninstall.SetupCooldownModeFragment
@@ -67,6 +68,7 @@ class FragmentActivity : AppCompatActivity() {
             SetupPasswordModeFragment.FRAGMENT_ID,
             SetupTimedModeFragment.FRAGMENT_ID,
             SetupCooldownModeFragment.FRAGMENT_ID,
+            AntiModificationsFragment.FRAGMENT_ID,
             KeywordBlockerFragment.FRAGMENT_ID -> {
                 // Hide bottom nav for these standalone fragments
                 bottomNav.visibility = android.view.View.GONE
@@ -90,6 +92,7 @@ class FragmentActivity : AppCompatActivity() {
                     SetupPasswordModeFragment.FRAGMENT_ID -> SetupPasswordModeFragment()
                     SetupTimedModeFragment.FRAGMENT_ID -> SetupTimedModeFragment()
                     SetupCooldownModeFragment.FRAGMENT_ID -> SetupCooldownModeFragment()
+                    AntiModificationsFragment.FRAGMENT_ID -> AntiModificationsFragment()
                     else -> AccessibilityGuide()
                 }
                 fragment.arguments = intent.extras

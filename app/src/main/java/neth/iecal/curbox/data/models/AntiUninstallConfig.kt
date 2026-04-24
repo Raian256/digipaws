@@ -7,7 +7,6 @@ data class AntiUninstallConfig(
     val mode: Int = 0,
     val passwordHash: String = "",
     val endTimeInMillis: Long = 0L,
-    val blockConfigChanges: Boolean = false,
     val cooldownMinutes: Int = 0,
     val removalRequestedAt: Long = 0L
 ) {

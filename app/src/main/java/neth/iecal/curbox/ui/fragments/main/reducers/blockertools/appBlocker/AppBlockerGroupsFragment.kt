@@ -19,9 +19,12 @@ import com.google.android.material.switchmaterial.SwitchMaterial
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import neth.iecal.curbox.R
+import neth.iecal.curbox.data.models.AntiModificationsConfig
 import neth.iecal.curbox.data.models.AppBlockingType
 import neth.iecal.curbox.data.models.AppGroup
 import neth.iecal.curbox.ui.activity.FragmentActivity
+import neth.iecal.curbox.ui.fragments.main.reducers.anti_modifications.AntiModificationsGate
+import neth.iecal.curbox.utils.DataStoreManager
 
 class AppBlockerGroupsFragment : Fragment() {
 
@@ -35,13 +38,15 @@ class AppBlockerGroupsFragment : Fragment() {
     private lateinit var toolbar: MaterialToolbar
 
     private val viewModel: AppBlockerSettingViewModel by activityViewModels()
+    private val dataStoreManager by lazy { DataStoreManager(requireContext().applicationContext) }
+    private var antiMods: AntiModificationsConfig = AntiModificationsConfig()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
         val view = inflater.inflate(R.layout.fragment_app_blocker_groups, container, false)
-        
+
         rvGroups = view.findViewById(R.id.rv_app_groups)
         tvEmptyState = view.findViewById(R.id.tv_empty_state)
         fabAddGroup = view.findViewById(R.id.fab_add_group)
@@ -52,6 +57,10 @@ class AppBlockerGroupsFragment : Fragment() {
         }
 
         fabAddGroup.setOnClickListener {
+            if (antiMods.isEnabled && antiMods.lockAllAppPauseSchedules) {
+                AntiModificationsGate.refuseWithSnackbar(view)
+                return@setOnClickListener
+            }
             val intent = Intent(requireContext(), FragmentActivity::class.java).apply {
                 putExtra("fragment", CreateAppGroupFragment.FRAGMENT_ID)
             }
@@ -59,13 +68,13 @@ class AppBlockerGroupsFragment : Fragment() {
         }
 
         rvGroups.layoutManager = LinearLayoutManager(requireContext())
-        
+
         return view
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        
+
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.groups.collectLatest { groups ->
@@ -77,6 +86,15 @@ class AppBlockerGroupsFragment : Fragment() {
                         rvGroups.visibility = View.VISIBLE
                         rvGroups.adapter = AppGroupAdapter(groups)
                     }
+                }
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                dataStoreManager.settings.collectLatest { settings ->
+                    antiMods = settings.antiModificationsConfig
+                    rvGroups.adapter?.notifyDataSetChanged()
                 }
             }
         }
@@ -100,18 +118,34 @@ class AppBlockerGroupsFragment : Fragment() {
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
             val group = groupList[position]
             holder.tvName.text = group.name
-            
+
             val typeText = if (group.blockingType == AppBlockingType.Timed) "Time Based" else "Usage Based"
             holder.tvDetails.text = "${group.selectedPackages.size} Apps • $typeText"
-            
+
             holder.switchActive.setOnCheckedChangeListener(null)
             holder.switchActive.isChecked = group.isActive
-            
-            holder.switchActive.setOnCheckedChangeListener { _, isChecked ->
+
+            val locked = AntiModificationsGate.isAppPauseLocked(antiMods, group.id)
+
+            holder.switchActive.setOnCheckedChangeListener { buttonView, isChecked ->
+                if (locked) {
+                    buttonView.setOnCheckedChangeListener(null)
+                    buttonView.isChecked = group.isActive
+                    AntiModificationsGate.refuseWithSnackbar(holder.itemView)
+                    // Re-bind the listener after revert so subsequent toggles work.
+                    holder.switchActive.setOnCheckedChangeListener { _, v ->
+                        viewModel.updateGroupActiveState(position, v)
+                    }
+                    return@setOnCheckedChangeListener
+                }
                 viewModel.updateGroupActiveState(position, isChecked)
             }
-            
+
             holder.itemView.setOnClickListener {
+                if (locked) {
+                    AntiModificationsGate.refuseWithSnackbar(holder.itemView)
+                    return@setOnClickListener
+                }
                 val intent = Intent(requireContext(), FragmentActivity::class.java).apply {
                     putExtra("fragment", CreateAppGroupFragment.FRAGMENT_ID)
                     putExtra("group_id", group.id)

@@ -14,10 +14,13 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import neth.iecal.curbox.data.models.AntiModificationsConfig
 import neth.iecal.curbox.data.models.AutoFocusGroup
 import neth.iecal.curbox.data.models.FocusBlockMode
 import neth.iecal.curbox.databinding.FragmentAutofocusBinding
 import neth.iecal.curbox.databinding.ItemAutofocusGroupBinding
+import neth.iecal.curbox.ui.fragments.main.reducers.anti_modifications.AntiModificationsGate
+import neth.iecal.curbox.utils.DataStoreManager
 
 class AutoFocusFragment : Fragment() {
 
@@ -29,18 +32,24 @@ class AutoFocusFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val viewModel: AutoFocusViewModel by activityViewModels()
+    private val dataStoreManager by lazy { DataStoreManager(requireContext().applicationContext) }
+    private var antiMods: AntiModificationsConfig = AntiModificationsConfig()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentAutofocusBinding.inflate(inflater, container, false)
-        
+
         binding.toolbar.setNavigationOnClickListener {
             requireActivity().finish()
         }
 
         binding.fabAddGroup.setOnClickListener {
+            if (antiMods.isEnabled && antiMods.lockAllAutoFocusSchedules) {
+                AntiModificationsGate.refuseWithSnackbar(binding.root)
+                return@setOnClickListener
+            }
             val intent = Intent(requireContext(), neth.iecal.curbox.ui.activity.FragmentActivity::class.java).apply {
                 putExtra("fragment", CreateAutoFocusGroupFragment.FRAGMENT_ID)
             }
@@ -48,13 +57,13 @@ class AutoFocusFragment : Fragment() {
         }
 
         binding.rvAutofocusGroups.layoutManager = LinearLayoutManager(requireContext())
-        
+
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        
+
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.groups.collectLatest { groups ->
@@ -66,6 +75,15 @@ class AutoFocusFragment : Fragment() {
                         binding.rvAutofocusGroups.visibility = View.VISIBLE
                         binding.rvAutofocusGroups.adapter = AutoFocusGroupAdapter(groups)
                     }
+                }
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                dataStoreManager.settings.collectLatest { settings ->
+                    antiMods = settings.antiModificationsConfig
+                    binding.rvAutofocusGroups.adapter?.notifyDataSetChanged()
                 }
             }
         }
@@ -86,11 +104,15 @@ class AutoFocusFragment : Fragment() {
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
             val group = groupList[position]
             holder.itemBinding.tvGroupName.text = group.groupName
-            
+
             val typeText = if (group.blockMode == FocusBlockMode.BLOCK_SELECTED) "Included" else "Excluded"
             holder.itemBinding.tvGroupDetails.text = "${group.packages.size} Apps • $typeText"
-            
+
             holder.itemView.setOnClickListener {
+                if (AntiModificationsGate.isAutoFocusLocked(antiMods, group.groupId)) {
+                    AntiModificationsGate.refuseWithSnackbar(holder.itemView)
+                    return@setOnClickListener
+                }
                 val intent = Intent(requireContext(), neth.iecal.curbox.ui.activity.FragmentActivity::class.java).apply {
                     putExtra("fragment", CreateAutoFocusGroupFragment.FRAGMENT_ID)
                     putExtra("group_id", group.groupId)

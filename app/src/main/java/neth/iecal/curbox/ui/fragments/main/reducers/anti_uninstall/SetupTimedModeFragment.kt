@@ -8,6 +8,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import neth.iecal.curbox.Constants
@@ -27,6 +28,7 @@ class SetupTimedModeFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val dataStoreManager by lazy { DataStoreManager(requireContext().applicationContext) }
+    private val target by lazy { LockSetupTarget.fromArgs(this) }
 
     private var selectedEndMillis: Long = 0L
 
@@ -50,10 +52,6 @@ class SetupTimedModeFragment : Fragment() {
                 set(Calendar.MILLISECOND, 0)
             }
             selectedEndMillis = cal.timeInMillis
-        }
-
-        binding.switchBlockConfig.setOnCheckedChangeListener { _, isChecked ->
-            if (isChecked) showBlockConfigWarning()
         }
 
         binding.btnTurnOn.setOnClickListener { onTurnOnClicked() }
@@ -83,29 +81,36 @@ class SetupTimedModeFragment : Fragment() {
     }
 
     private fun saveAndExit() {
-        val blockChanges = binding.switchBlockConfig.isChecked
         val endMillis = selectedEndMillis
         viewLifecycleOwner.lifecycleScope.launch {
             withContext(Dispatchers.IO) {
-                dataStoreManager.updateAntiUninstallConfig(
-                    AntiUninstallConfig(
-                        isEnabled = true,
-                        mode = Constants.ANTI_UNINSTALL_TIMED_MODE,
-                        endTimeInMillis = endMillis,
-                        blockConfigChanges = blockChanges
-                    )
-                )
+                when (target) {
+                    LockSetupTarget.ANTI_UNINSTALL -> {
+                        dataStoreManager.updateAntiUninstallConfig(
+                            AntiUninstallConfig(
+                                isEnabled = true,
+                                mode = Constants.ANTI_UNINSTALL_TIMED_MODE,
+                                endTimeInMillis = endMillis
+                            )
+                        )
+                    }
+                    LockSetupTarget.ANTI_MODIFICATIONS -> {
+                        val current = dataStoreManager.settings.first().antiModificationsConfig
+                        dataStoreManager.updateAntiModificationsConfig(
+                            current.copy(
+                                isEnabled = true,
+                                mode = Constants.ANTI_UNINSTALL_TIMED_MODE,
+                                endTimeInMillis = endMillis,
+                                passwordHash = "",
+                                cooldownMinutes = 0,
+                                removalRequestedAt = 0L
+                            )
+                        )
+                    }
+                }
             }
             requireActivity().finish()
         }
-    }
-
-    private fun showBlockConfigWarning() {
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(R.string.anti_uninstall_confirm_title)
-            .setMessage(R.string.anti_uninstall_block_config_warning)
-            .setPositiveButton(R.string.anti_uninstall_i_understand, null)
-            .show()
     }
 
     override fun onDestroyView() {

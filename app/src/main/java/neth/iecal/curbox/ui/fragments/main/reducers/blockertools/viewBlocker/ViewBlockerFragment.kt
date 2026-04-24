@@ -20,7 +20,10 @@ import com.google.android.material.materialswitch.MaterialSwitch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import neth.iecal.curbox.R
+import neth.iecal.curbox.data.models.AntiModificationsConfig
 import neth.iecal.curbox.databinding.FragmentViewBlockerBinding
+import neth.iecal.curbox.ui.fragments.main.reducers.anti_modifications.AntiModificationsGate
+import neth.iecal.curbox.utils.DataStoreManager
 
 
 class ViewBlockerFragment : Fragment() {
@@ -29,6 +32,8 @@ class ViewBlockerFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val viewModel: ViewBlockerViewModel by activityViewModels()
+    private val dataStoreManager by lazy { DataStoreManager(requireContext().applicationContext) }
+    private var antiMods: AntiModificationsConfig = AntiModificationsConfig()
     private var isUpdatingUi = false
 
     override fun onCreateView(
@@ -53,6 +58,10 @@ class ViewBlockerFragment : Fragment() {
         }
 
         binding.btnAddRule.setOnClickListener {
+            if (antiMods.isEnabled && antiMods.lockAllViewBlockers) {
+                AntiModificationsGate.refuseWithSnackbar(binding.root)
+                return@setOnClickListener
+            }
             val ruleText = binding.editCustomRule.text?.toString()?.trim() ?: ""
             if (ruleText.isEmpty()) {
                 Toast.makeText(requireContext(), "Empty Rule", Toast.LENGTH_SHORT).show()
@@ -63,6 +72,10 @@ class ViewBlockerFragment : Fragment() {
         }
 
         binding.btnPickElement.setOnClickListener {
+            if (antiMods.isEnabled && antiMods.lockAllViewBlockers) {
+                AntiModificationsGate.refuseWithSnackbar(binding.root)
+                return@setOnClickListener
+            }
             val intent = Intent(INTENT_ACTION_SHOW_PICKER_NOTIFICATION)
             intent.setPackage(requireContext().packageName)
             requireContext().sendBroadcast(intent)
@@ -71,6 +84,14 @@ class ViewBlockerFragment : Fragment() {
     }
 
     private fun observeViewModel() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            dataStoreManager.settings.collectLatest { settings ->
+                antiMods = settings.antiModificationsConfig
+                val current = viewModel.viewBlockerConfig.value
+                buildRuleToggles(current.rules)
+                buildCustomRuleChips(current.customRules)
+            }
+        }
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.viewBlockerConfig.collectLatest { config ->
                 isUpdatingUi = true
@@ -189,8 +210,15 @@ class ViewBlockerFragment : Fragment() {
                 container.addView(header)
             }
 
+            val locked = AntiModificationsGate.isViewBlockerLocked(antiMods, rule.id)
             val card = createRuleCard(rule.label, rule.isEnabled, null) { isChecked ->
-                viewModel.setRuleEnabled(rule.id, isChecked)
+                if (locked) {
+                    AntiModificationsGate.refuseWithSnackbar(binding.root)
+                    // Force a rebuild so the switch snaps back to the real value.
+                    buildRuleToggles(viewModel.viewBlockerConfig.value.rules)
+                } else {
+                    viewModel.setRuleEnabled(rule.id, isChecked)
+                }
             }
             container.addView(card)
         }
@@ -205,30 +233,40 @@ class ViewBlockerFragment : Fragment() {
             val cleanRule = rule.removePrefix("!DISABLED!")
             val label = extractLabel(cleanRule)
 
+            val customLocked = antiMods.isEnabled && antiMods.lockAllViewBlockers
             val onClickAction = {
-                val editText = android.widget.EditText(requireContext())
-                editText.setText(cleanRule)
-                com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-                    .setTitle("Edit Rule")
-                    .setView(editText)
-                    .setNeutralButton("Delete") { _, _ ->
-                        viewModel.removeCustomRule(rule)
-                    }
-                    .setPositiveButton("Save") { _, _ ->
-                        val newStr = editText.text.toString()
-                        if (newStr.isNotBlank()) {
-                            viewModel.editCustomRule(rule, if (isEnabled) newStr else "!DISABLED!$newStr")
-                        } else {
+                if (customLocked) {
+                    AntiModificationsGate.refuseWithSnackbar(binding.root)
+                } else {
+                    val editText = android.widget.EditText(requireContext())
+                    editText.setText(cleanRule)
+                    com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                        .setTitle("Edit Rule")
+                        .setView(editText)
+                        .setNeutralButton("Delete") { _, _ ->
                             viewModel.removeCustomRule(rule)
                         }
-                    }
-                    .setNegativeButton("Cancel", null)
-                    .show()
+                        .setPositiveButton("Save") { _, _ ->
+                            val newStr = editText.text.toString()
+                            if (newStr.isNotBlank()) {
+                                viewModel.editCustomRule(rule, if (isEnabled) newStr else "!DISABLED!$newStr")
+                            } else {
+                                viewModel.removeCustomRule(rule)
+                            }
+                        }
+                        .setNegativeButton("Cancel", null)
+                        .show()
+                }
                 Unit
             }
 
             val card = createRuleCard(label, isEnabled, onClickAction) { checked ->
-                viewModel.setCustomRuleEnabled(rule, checked)
+                if (customLocked) {
+                    AntiModificationsGate.refuseWithSnackbar(binding.root)
+                    buildCustomRuleChips(viewModel.viewBlockerConfig.value.customRules)
+                } else {
+                    viewModel.setCustomRuleEnabled(rule, checked)
+                }
             }
             container.addView(card)
         }

@@ -19,8 +19,11 @@ import androidx.lifecycle.lifecycleScope
 import com.google.android.material.chip.Chip
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import neth.iecal.curbox.data.models.AntiModificationsConfig
 import neth.iecal.curbox.databinding.FragmentKeywordBlockerBinding
 import neth.iecal.curbox.ui.activity.SelectAppsActivity
+import neth.iecal.curbox.ui.fragments.main.reducers.anti_modifications.AntiModificationsGate
+import neth.iecal.curbox.utils.DataStoreManager
 
 class KeywordBlockerFragment : Fragment() {
 
@@ -28,6 +31,8 @@ class KeywordBlockerFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val viewModel: KeywordBlockerViewModel by activityViewModels()
+    private val dataStoreManager by lazy { DataStoreManager(requireContext().applicationContext) }
+    private var antiMods: AntiModificationsConfig = AntiModificationsConfig()
     private var isUpdatingUi = false
 
     private var selectedApps = listOf<String>()
@@ -66,6 +71,10 @@ class KeywordBlockerFragment : Fragment() {
         }
 
         binding.btnAddKeyword.setOnClickListener {
+            if (antiMods.isEnabled && antiMods.lockAllKeywords) {
+                AntiModificationsGate.refuseWithSnackbar(binding.root)
+                return@setOnClickListener
+            }
             var keyword = binding.etKeyword.text.toString()
             if (keyword.isNotBlank()) {
                 if (Patterns.WEB_URL.matcher(keyword).matches()) {
@@ -115,6 +124,12 @@ class KeywordBlockerFragment : Fragment() {
 
     private fun observeViewModel() {
         viewLifecycleOwner.lifecycleScope.launch {
+            dataStoreManager.settings.collectLatest { settings ->
+                antiMods = settings.antiModificationsConfig
+                updateKeywordsList(viewModel.keywordBlockerConfig.value.blockedKeywords)
+            }
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
             viewModel.keywordBlockerConfig.collectLatest { config ->
                 isUpdatingUi = true
 
@@ -145,11 +160,16 @@ class KeywordBlockerFragment : Fragment() {
     private fun updateKeywordsList(keywords: List<String>) {
         binding.cgKeywords.removeAllViews()
         for (keyword in keywords) {
+            val locked = AntiModificationsGate.isKeywordLocked(antiMods, keyword)
             val chip = Chip(requireContext()).apply {
                 text = keyword
-                isCloseIconVisible = true
+                isCloseIconVisible = !locked
                 setOnCloseIconClickListener {
-                    viewModel.removeKeyword(keyword)
+                    if (locked) {
+                        AntiModificationsGate.refuseWithSnackbar(binding.root)
+                    } else {
+                        viewModel.removeKeyword(keyword)
+                    }
                 }
             }
             binding.cgKeywords.addView(chip)

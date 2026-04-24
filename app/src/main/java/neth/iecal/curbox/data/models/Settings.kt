@@ -18,5 +18,6 @@ data class Settings(
     val usageTrackerIgnoredApps: List<String> = listOf(),
     val mindfulMessageConfig: MindfulMessageConfig = MindfulMessageConfig(),
     val viewBlockerConfig: ViewBlockerConfig = ViewBlockerConfig(),
-    val antiUninstallConfig: AntiUninstallConfig = AntiUninstallConfig()
+    val antiUninstallConfig: AntiUninstallConfig = AntiUninstallConfig(),
+    val antiModificationsConfig: AntiModificationsConfig = AntiModificationsConfig()
 )
