@@ -28,6 +28,7 @@ import neth.iecal.curbox.R
 import neth.iecal.curbox.databinding.ActivitySelectAppsBinding
 import neth.iecal.curbox.databinding.DialogAddKeywordBinding
 import neth.iecal.curbox.utils.DataStoreManager
+import neth.iecal.curbox.utils.getEssentialPackages
 
 class SelectAppsActivity : AppCompatActivity() {
 
@@ -72,7 +73,9 @@ class SelectAppsActivity : AppCompatActivity() {
             intent.getStringArrayListExtra("PRE_SELECTED_APPS")?.toHashSet() ?: HashSet()
 
         ignoredApps = intent.getStringArrayListExtra("IGNORED_APPS")?.toHashSet() ?: HashSet()
-        ignoredApps.add(packageName) // also remove curbox app from the list
+        // Hide essentials (launcher, keyboard, system UI, our own app) from the picker —
+        // blockers refuse to act on them, so showing them would be misleading.
+        ignoredApps.addAll(getEssentialPackages(this))
 
         Log.d("pre-selected-apps", selectedAppList.toString())
 
@@ -170,7 +173,7 @@ class SelectAppsActivity : AppCompatActivity() {
         }
         if (intent.hasExtra("APP_LIST")) {
             val appList = intent.getStringArrayListExtra("APP_LIST")
-            appList?.forEach { packageName ->
+            appList?.filterNot { ignoredApps.contains(it) }?.forEach { packageName ->
                 try {
                     val appInfo = packageManager.getApplicationInfo(packageName, 0)
                     appItemList.add(
@@ -205,7 +208,7 @@ class SelectAppsActivity : AppCompatActivity() {
 
             // Add uninstalled apps from selectedAppList that aren't already included
             selectedAppList.forEach { packageName ->
-                if (!installedPackages.contains(packageName)) {
+                if (!installedPackages.contains(packageName) && !ignoredApps.contains(packageName)) {
                     try {
                         val appInfo = packageManager.getApplicationInfo(packageName, 0)
                         appItemList.add(
