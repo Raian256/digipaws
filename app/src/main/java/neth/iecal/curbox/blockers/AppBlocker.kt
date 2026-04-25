@@ -30,7 +30,7 @@ import neth.iecal.curbox.utils.ShizukuRunner
 import neth.iecal.curbox.utils.TimeTools
 import neth.iecal.curbox.utils.TimerNotification
 import neth.iecal.curbox.utils.UsageStatsHelper
-import neth.iecal.curbox.utils.getDefaultLauncherPackageName
+import neth.iecal.curbox.utils.getEssentialPackages
 import java.util.Calendar
 import java.util.concurrent.ConcurrentHashMap
 
@@ -68,7 +68,7 @@ class AppBlocker() : BaseBlocker() {
 
     private lateinit var usageStats : UsageStatsHelper
     private var lastPackage = ""
-    private var launcherPackage: String? = null
+    private var essentialPackages: Set<String> = emptySet()
     private lateinit var service: BaseBlockingService
 
 
@@ -86,10 +86,7 @@ class AppBlocker() : BaseBlocker() {
 
         val packageName = event.packageName?.toString() ?: return
 
-        if (lastPackage == packageName || packageName == service.packageName || packageName == "com.android.systemui") return
-
-        // Never block the device's launcher — blocking it would press-home into itself.
-        if (packageName == launcherPackage) return
+        if (lastPackage == packageName || essentialPackages.contains(packageName)) return
 
         lastPackage = packageName
 
@@ -162,7 +159,7 @@ class AppBlocker() : BaseBlocker() {
         prefs = service.getSharedPreferences("app_blocker_prefs", Context.MODE_PRIVATE)
         loadPersistedData()
         usageStats = UsageStatsHelper(service)
-        launcherPackage = getDefaultLauncherPackageName(service.packageManager)
+        essentialPackages = getEssentialPackages(service)
         CoroutineScope(Dispatchers.IO).launch {
             service.dataStoreManager.settings.collectLatest { settings ->
                 // Clear existing thread-safe maps and repopulate them
