@@ -5,6 +5,7 @@ class Constants {
         // available modes for setting up anti-uninstall
         const val ANTI_UNINSTALL_PASSWORD_MODE = 1
         const val ANTI_UNINSTALL_TIMED_MODE = 2
+        const val ANTI_UNINSTALL_COOLDOWN_MODE = 3
 
         // available types of warning screen
         const val WARNING_SCREEN_MODE_VIEW_BLOCKER = 1

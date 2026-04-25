@@ -17,5 +17,7 @@ data class Settings(
     val grayscaleGroups: List<GrayscaleGroup> = listOf(),
     val usageTrackerIgnoredApps: List<String> = listOf(),
     val mindfulMessageConfig: MindfulMessageConfig = MindfulMessageConfig(),
-    val viewBlockerConfig: ViewBlockerConfig = ViewBlockerConfig()
+    val viewBlockerConfig: ViewBlockerConfig = ViewBlockerConfig(),
+    val antiUninstallConfig: AntiUninstallConfig = AntiUninstallConfig(),
+    val antiModificationsConfig: AntiModificationsConfig = AntiModificationsConfig()
 )

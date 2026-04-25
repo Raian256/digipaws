@@ -13,6 +13,14 @@ import neth.iecal.curbox.ui.fragments.main.reducers.ReducersFragment
 import neth.iecal.curbox.ui.fragments.main.reducers.analytics.IntentsLogFragment
 import neth.iecal.curbox.ui.fragments.main.reducers.anti_stimulants.grayscale.CreateGrayscaleGroupFragment
 import neth.iecal.curbox.ui.fragments.main.reducers.anti_stimulants.grayscale.GrayscaleFragment
+import neth.iecal.curbox.ui.fragments.main.reducers.anti_modifications.AntiModificationsFragment
+import neth.iecal.curbox.ui.fragments.main.reducers.anti_modifications.AntiModificationsGroupDetailsFragment
+import neth.iecal.curbox.ui.fragments.main.reducers.anti_modifications.CreateAntiModificationsGroupFragment
+import neth.iecal.curbox.ui.fragments.main.reducers.anti_uninstall.AntiUninstallFragment
+import neth.iecal.curbox.ui.fragments.main.reducers.anti_uninstall.ChooseAntiUninstallModeFragment
+import neth.iecal.curbox.ui.fragments.main.reducers.anti_uninstall.SetupCooldownModeFragment
+import neth.iecal.curbox.ui.fragments.main.reducers.anti_uninstall.SetupPasswordModeFragment
+import neth.iecal.curbox.ui.fragments.main.reducers.anti_uninstall.SetupTimedModeFragment
 import neth.iecal.curbox.ui.fragments.main.usage.AllAppsUsageFragment
 import neth.iecal.curbox.ui.fragments.main.reducers.blockertools.appBlocker.AppBlockerGroupsFragment
 import neth.iecal.curbox.ui.fragments.main.reducers.blockertools.appBlocker.CreateAppGroupFragment
@@ -57,6 +65,14 @@ class FragmentActivity : AppCompatActivity() {
                 ViewBlockerFragment.FRAGMENT_ID,
                 IntentsLogFragment.FRAGMENT_ID,
             neth.iecal.curbox.ui.fragments.main.reducers.anti_stimulants.mindful_messages.MindfulMessagesFragment.FRAGMENT_ID,
+            AntiUninstallFragment.FRAGMENT_ID,
+            ChooseAntiUninstallModeFragment.FRAGMENT_ID,
+            SetupPasswordModeFragment.FRAGMENT_ID,
+            SetupTimedModeFragment.FRAGMENT_ID,
+            SetupCooldownModeFragment.FRAGMENT_ID,
+            AntiModificationsFragment.FRAGMENT_ID,
+            CreateAntiModificationsGroupFragment.FRAGMENT_ID,
+            AntiModificationsGroupDetailsFragment.FRAGMENT_ID,
             KeywordBlockerFragment.FRAGMENT_ID -> {
                 // Hide bottom nav for these standalone fragments
                 bottomNav.visibility = android.view.View.GONE
@@ -75,6 +91,14 @@ class FragmentActivity : AppCompatActivity() {
                     CreateGrayscaleGroupFragment.FRAGMENT_ID -> CreateGrayscaleGroupFragment()
                     neth.iecal.curbox.ui.fragments.main.reducers.anti_stimulants.mindful_messages.MindfulMessagesFragment.FRAGMENT_ID -> neth.iecal.curbox.ui.fragments.main.reducers.anti_stimulants.mindful_messages.MindfulMessagesFragment()
                     IntentsLogFragment.FRAGMENT_ID -> IntentsLogFragment()
+                    AntiUninstallFragment.FRAGMENT_ID -> AntiUninstallFragment()
+                    ChooseAntiUninstallModeFragment.FRAGMENT_ID -> ChooseAntiUninstallModeFragment()
+                    SetupPasswordModeFragment.FRAGMENT_ID -> SetupPasswordModeFragment()
+                    SetupTimedModeFragment.FRAGMENT_ID -> SetupTimedModeFragment()
+                    SetupCooldownModeFragment.FRAGMENT_ID -> SetupCooldownModeFragment()
+                    AntiModificationsFragment.FRAGMENT_ID -> AntiModificationsFragment()
+                    CreateAntiModificationsGroupFragment.FRAGMENT_ID -> CreateAntiModificationsGroupFragment()
+                    AntiModificationsGroupDetailsFragment.FRAGMENT_ID -> AntiModificationsGroupDetailsFragment()
                     else -> AccessibilityGuide()
                 }
                 fragment.arguments = intent.extras
