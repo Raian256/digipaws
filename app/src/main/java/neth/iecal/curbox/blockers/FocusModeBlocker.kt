@@ -29,8 +29,7 @@ import neth.iecal.curbox.data.models.TimeInterval
 import neth.iecal.curbox.services.BaseBlockingService
 import neth.iecal.curbox.utils.AppSuspendHelper
 import neth.iecal.curbox.utils.TimerNotification
-import neth.iecal.curbox.utils.getCurrentKeyboardPackageName
-import neth.iecal.curbox.utils.getDefaultLauncherPackageName
+import neth.iecal.curbox.utils.getEssentialPackages
 import java.util.Calendar
 
 class FocusModeBlocker : BaseBlocker() {
@@ -145,7 +144,7 @@ class FocusModeBlocker : BaseBlocker() {
 
     fun doFocusModeCheck(event: AccessibilityEvent?) {
         val packageName = event?.packageName.toString()
-        if (lastPackage == packageName || packageName == service.getPackageName()) return
+        if (lastPackage == packageName) return
         lastPackage = packageName
 
         fun performBlock() {
@@ -157,10 +156,12 @@ class FocusModeBlocker : BaseBlocker() {
         if (focusModeData != null) {
             when (focusModeData!!.focusGroupData.blockMode) {
                 FocusBlockMode.BLOCK_SELECTED -> {
-                    if (focusModeData!!.focusGroupData.packages.contains(packageName)) performBlock()
+                    if (focusModeData!!.focusGroupData.packages.contains(packageName)
+                        && !essentialPackages.contains(packageName)) performBlock()
                 }
                 FocusBlockMode.BLOCK_ALL_EXCEPT_SELECTED -> {
-                    if (!focusModeData!!.focusGroupData.packages.contains(packageName)) performBlock()
+                    if (!focusModeData!!.focusGroupData.packages.contains(packageName)
+                        && !essentialPackages.contains(packageName)) performBlock()
                 }
             }
             if (focusModeData!!.endTimeInMillis < System.currentTimeMillis()) {
@@ -191,7 +192,8 @@ class FocusModeBlocker : BaseBlocker() {
             anyAutoFocusActive = true
             activeAutoFocusGroupId = group.groupId
             val blocked = when (group.blockMode) {
-                FocusBlockMode.BLOCK_SELECTED -> group.packages.contains(packageName)
+                FocusBlockMode.BLOCK_SELECTED ->
+                    group.packages.contains(packageName) && !essentialPackages.contains(packageName)
                 FocusBlockMode.BLOCK_ALL_EXCEPT_SELECTED ->
                     !group.packages.contains(packageName) && !essentialPackages.contains(packageName)
             }
@@ -324,12 +326,7 @@ class FocusModeBlocker : BaseBlocker() {
         notificationManager = TimerNotification(service)
         createAutoFocusNotificationChannel()
 
-        // cache essential packages
-        val essential = mutableSetOf("com.android.systemui")
-        getDefaultLauncherPackageName(service.packageManager)?.let { essential.add(it) }
-        getCurrentKeyboardPackageName(service)?.let { essential.add(it) }
-        essentialPackages = essential
-
+        essentialPackages = getEssentialPackages(service)
         Log.d("essential package", essentialPackages.toString())
         CoroutineScope(Dispatchers.IO).launch {
             val db = neth.iecal.curbox.data.db.AppDatabase.getInstance(service)
@@ -348,9 +345,6 @@ class FocusModeBlocker : BaseBlocker() {
                 if (settings.activeManualFocusGroupId.first != null) {
                     val currentFocusingGroup = settings.manualFocusGroups.find { it.groupId == settings.activeManualFocusGroupId.first }
                     if (currentFocusingGroup != null && settings.activeManualFocusGroupId.second > System.currentTimeMillis()) {
-                        if (currentFocusingGroup.blockMode == FocusBlockMode.BLOCK_ALL_EXCEPT_SELECTED) {
-                            currentFocusingGroup.packages.addAll(essentialPackages)
-                        }
                         focusModeData = ManualFocusModeData(currentFocusingGroup, settings.activeManualFocusGroupId.second)
                         withContext(Dispatchers.Main) {
                             notificationManager.startTimer(

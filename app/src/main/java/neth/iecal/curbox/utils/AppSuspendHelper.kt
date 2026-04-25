@@ -33,7 +33,7 @@ object AppSuspendHelper {
         essentialPackages: Set<String>
     ): List<String> {
         return if (blockMode == FocusBlockMode.BLOCK_SELECTED) {
-            groupPackages.toList()
+            groupPackages.filter { it !in essentialPackages }
         } else {
             val allPackages = context.packageManager.getInstalledPackages(0).map { it.packageName }
             allPackages.filter { it !in groupPackages && it !in essentialPackages }
