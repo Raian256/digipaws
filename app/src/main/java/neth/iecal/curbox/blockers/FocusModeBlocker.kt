@@ -157,10 +157,12 @@ class FocusModeBlocker : BaseBlocker() {
         if (focusModeData != null) {
             when (focusModeData!!.focusGroupData.blockMode) {
                 FocusBlockMode.BLOCK_SELECTED -> {
-                    if (focusModeData!!.focusGroupData.packages.contains(packageName)) performBlock()
+                    if (focusModeData!!.focusGroupData.packages.contains(packageName)
+                        && !essentialPackages.contains(packageName)) performBlock()
                 }
                 FocusBlockMode.BLOCK_ALL_EXCEPT_SELECTED -> {
-                    if (!focusModeData!!.focusGroupData.packages.contains(packageName)) performBlock()
+                    if (!focusModeData!!.focusGroupData.packages.contains(packageName)
+                        && !essentialPackages.contains(packageName)) performBlock()
                 }
             }
             if (focusModeData!!.endTimeInMillis < System.currentTimeMillis()) {
@@ -191,7 +193,8 @@ class FocusModeBlocker : BaseBlocker() {
             anyAutoFocusActive = true
             activeAutoFocusGroupId = group.groupId
             val blocked = when (group.blockMode) {
-                FocusBlockMode.BLOCK_SELECTED -> group.packages.contains(packageName)
+                FocusBlockMode.BLOCK_SELECTED ->
+                    group.packages.contains(packageName) && !essentialPackages.contains(packageName)
                 FocusBlockMode.BLOCK_ALL_EXCEPT_SELECTED ->
                     !group.packages.contains(packageName) && !essentialPackages.contains(packageName)
             }
