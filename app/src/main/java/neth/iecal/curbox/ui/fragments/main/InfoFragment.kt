@@ -9,15 +9,30 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import kotlinx.coroutines.launch
 import java.io.File
 import neth.iecal.curbox.databinding.FragmentInfoBinding
+import neth.iecal.curbox.utils.backup.BackupManager
 
 class InfoFragment : Fragment() {
 
     private var _binding: FragmentInfoBinding? = null
     private val binding get() = _binding!!
+
+    private val exportPicker: ActivityResultLauncher<Intent> =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            result.data?.data?.let { uri -> runExport(uri) }
+        }
+
+    private val importPicker: ActivityResultLauncher<Intent> =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            result.data?.data?.let { uri -> confirmAndRunImport(uri) }
+        }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -55,6 +70,71 @@ class InfoFragment : Fragment() {
         binding.btnActionCrashLogs.setOnClickListener {
             showCrashLogs()
         }
+
+        binding.btnExportBackup.setOnClickListener {
+            val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+                addCategory(Intent.CATEGORY_OPENABLE)
+                type = "application/json"
+                putExtra(Intent.EXTRA_TITLE, BackupManager.suggestedFileName())
+            }
+            exportPicker.launch(intent)
+        }
+
+        binding.btnImportBackup.setOnClickListener {
+            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                addCategory(Intent.CATEGORY_OPENABLE)
+                type = "application/json"
+                putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("application/json", "*/*"))
+            }
+            importPicker.launch(intent)
+        }
+    }
+
+    private fun runExport(uri: Uri) {
+        lifecycleScope.launch {
+            BackupManager.export(requireContext(), uri)
+                .onSuccess {
+                    Toast.makeText(requireContext(), getString(R.string.backup_exported), Toast.LENGTH_SHORT).show()
+                }
+                .onFailure { e ->
+                    Toast.makeText(
+                        requireContext(),
+                        getString(R.string.backup_export_failed, e.message ?: ""),
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+        }
+    }
+
+    private fun confirmAndRunImport(uri: Uri) {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.backup_import_confirm_title)
+            .setMessage(R.string.backup_import_confirm_message)
+            .setPositiveButton(R.string.import_backup) { _, _ ->
+                lifecycleScope.launch {
+                    BackupManager.import(requireContext(), uri)
+                        .onSuccess { summary ->
+                            val msg = if (summary.skippedIncompatible.isEmpty()) {
+                                getString(R.string.backup_imported)
+                            } else {
+                                getString(
+                                    R.string.backup_import_partial_skipped,
+                                    summary.skippedIncompatible.joinToString()
+                                )
+                            }
+                            Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show()
+                        }
+                        .onFailure { e ->
+                            Toast.makeText(
+                                requireContext(),
+                                getString(R.string.backup_import_failed, e.message ?: ""),
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 
     private fun openUrl(url: String) {
