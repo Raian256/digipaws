@@ -199,6 +199,17 @@
     <string name="join_the_discord">Join the Discord</string>
     <string name="curboxapp">\@CurboxApp</string>
     <string name="system_diagnostics">System Diagnostics</string>
+    <string name="backup_and_restore">Backup &amp; Restore</string>
+    <string name="backup_and_restore_description">Save all your Curbox settings to a JSON file you can keep or use to restore on another device.</string>
+    <string name="export_backup">Export Backup</string>
+    <string name="import_backup">Import Backup</string>
+    <string name="backup_exported">Backup exported</string>
+    <string name="backup_export_failed">Export failed: %1$s</string>
+    <string name="backup_imported">Backup restored</string>
+    <string name="backup_import_failed">Restore failed: %1$s</string>
+    <string name="backup_import_partial_skipped">Restored. Skipped (newer-format): %1$s</string>
+    <string name="backup_import_confirm_title">Restore backup?</string>
+    <string name="backup_import_confirm_message">This will replace your current Curbox settings with the contents of the selected backup file. This cannot be undone.</string>
     <string name="view_and_share_application_crash_logs">View and share application crash logs to help improve Curbox.</string>
     <string name="view_crash_logs">View Crash Logs</string>
     <string name="group_name">Group Name</string>

@@ -31,8 +31,10 @@ import neth.iecal.curbox.ui.fragments.installation.onboarding.OnboardingViewMode
 import neth.iecal.curbox.ui.fragments.main.reducers.blockertools.appBlocker.AppBlockerSettingViewModel
 import neth.iecal.curbox.ui.fragments.main.usage.AllAppsUsageFragment
 import neth.iecal.curbox.utils.PermissionUtils
-import neth.iecal.curbox.utils.ZipUtils
-import neth.iecal.curbox.utils.ZipUtils.unzipSharedPreferencesFromUri
+import neth.iecal.curbox.utils.backup.BackupManager
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import android.widget.Toast
 import java.util.UUID
 
 class OnboardingPermissionsFragment : Fragment() {
@@ -59,9 +61,26 @@ class OnboardingPermissionsFragment : Fragment() {
     private val restorePicker: ActivityResultLauncher<Intent> =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             result.data?.data?.let { uri ->
-                val takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-                activity?.contentResolver?.takePersistableUriPermission(uri, takeFlags)
-                unzipSharedPreferencesFromUri(requireContext(), uri)
+                lifecycleScope.launch {
+                    BackupManager.import(requireContext(), uri)
+                        .onSuccess { summary ->
+                            val msg = buildString {
+                                append("Backup restored")
+                                if (summary.skippedIncompatible.isNotEmpty()) {
+                                    append(". Skipped (newer-format): ")
+                                    append(summary.skippedIncompatible.joinToString())
+                                }
+                            }
+                            Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show()
+                        }
+                        .onFailure { e ->
+                            Toast.makeText(
+                                requireContext(),
+                                "Restore failed: ${e.message}",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                }
             }
         }
 
@@ -224,7 +243,12 @@ class OnboardingPermissionsFragment : Fragment() {
         }
 
         binding.restoreRoot.setOnClickListener {
-            ZipUtils.showRestorePicker(restorePicker)
+            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                addCategory(Intent.CATEGORY_OPENABLE)
+                type = "application/json"
+                putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("application/json", "*/*"))
+            }
+            restorePicker.launch(intent)
         }
 
         binding.btnShizukuGrantAll.setOnClickListener {
