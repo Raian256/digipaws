@@ -1,6 +1,7 @@
 package neth.iecal.curbox.ui.fragments.main.reducers.anti_modifications
 
 import android.view.View
+import androidx.annotation.StringRes
 import com.google.android.material.snackbar.Snackbar
 import neth.iecal.curbox.R
 import neth.iecal.curbox.data.models.AntiModificationsConfig
@@ -14,8 +15,11 @@ import neth.iecal.curbox.data.models.AntiModificationsConfig
  */
 object AntiModificationsGate {
 
-    fun refuseWithSnackbar(anchor: View) {
-        Snackbar.make(anchor, R.string.anti_modifications_item_locked, Snackbar.LENGTH_LONG).show()
+    fun refuseWithSnackbar(
+        anchor: View,
+        @StringRes messageRes: Int = R.string.anti_modifications_item_locked
+    ) {
+        Snackbar.make(anchor, messageRes, Snackbar.LENGTH_LONG).show()
     }
 
     fun isAppPauseLocked(config: AntiModificationsConfig, id: String) =
@@ -29,4 +33,10 @@ object AntiModificationsGate {
 
     fun isViewBlockerLocked(config: AntiModificationsConfig, id: String) =
         config.isViewBlockerLocked(id)
+
+    fun hasAnyLockedKeyword(config: AntiModificationsConfig) =
+        config.hasAnyLockedKeyword()
+
+    fun hasAnyLockedViewBlocker(config: AntiModificationsConfig) =
+        config.hasAnyLockedViewBlocker()
 }

@@ -95,6 +95,7 @@
     <string name="anti_modifications_section_view_blockers">View blockers</string>
     <string name="anti_modifications_section_nothing_available">Nothing to pick here yet.</string>
     <string name="anti_modifications_item_locked">Locked by an Anti-Modifications group. Unlock it there to edit.</string>
+    <string name="anti_modifications_feature_disable_blocked">Can\'t disable: items in this section are locked by an Anti-Modifications group.</string>
     <string name="anti_modifications_cannot_unlock_waiting">%1$s remaining before this unlocks.</string>
     <string name="anti_modifications_cannot_unlock_timed">Locked until %1$s.</string>
     <string name="anti_modifications_cooldown_start_prompt">You\'ll need to wait %1$d minutes before this unlocks. The timer keeps running even if you close Curbox.</string>
