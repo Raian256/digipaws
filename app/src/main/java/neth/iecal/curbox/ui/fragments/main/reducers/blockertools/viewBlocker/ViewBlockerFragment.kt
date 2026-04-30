@@ -52,9 +52,18 @@ class ViewBlockerFragment : Fragment() {
 
     private fun setupListeners() {
         binding.switchEnableViewBlocker.setOnCheckedChangeListener { _, isChecked ->
-            if (!isUpdatingUi) {
-                viewModel.setIsActive(isChecked)
+            if (isUpdatingUi) return@setOnCheckedChangeListener
+            if (!isChecked && AntiModificationsGate.hasAnyLockedViewBlocker(antiMods)) {
+                AntiModificationsGate.refuseWithSnackbar(
+                    binding.root,
+                    R.string.anti_modifications_feature_disable_blocked
+                )
+                isUpdatingUi = true
+                binding.switchEnableViewBlocker.isChecked = true
+                isUpdatingUi = false
+                return@setOnCheckedChangeListener
             }
+            viewModel.setIsActive(isChecked)
         }
 
         binding.btnAddRule.setOnClickListener {

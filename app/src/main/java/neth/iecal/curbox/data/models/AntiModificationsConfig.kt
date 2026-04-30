@@ -25,6 +25,12 @@ data class AntiModificationsConfig(
     fun isAutoFocusLocked(id: String) = groups.any { id in it.lockedAutoFocusScheduleIds }
     fun isKeywordLocked(keyword: String) = groups.any { keyword in it.lockedKeywords }
     fun isViewBlockerLocked(id: String) = groups.any { id in it.lockedViewBlockerIds }
+
+    // Whole-feature gates: if any item in the domain is locked by any group,
+    // the corresponding master toggle must refuse "off" — otherwise disabling
+    // the feature globally would silently bypass every per-item lock.
+    fun hasAnyLockedKeyword() = groups.any { it.lockedKeywords.isNotEmpty() }
+    fun hasAnyLockedViewBlocker() = groups.any { it.lockedViewBlockerIds.isNotEmpty() }
 }
 
 /**
