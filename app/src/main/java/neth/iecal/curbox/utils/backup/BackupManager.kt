@@ -83,6 +83,12 @@ object BackupManager {
             val sectionsJson = root.getAsJsonObject("sections")
                 ?: throw BackupIncompatibleException("Backup is missing the 'sections' block")
 
+            // Run every section's precheck before any writes. Any failure aborts
+            // the entire import — partial restores are never applied.
+            for (section in sections) {
+                section.precheckImport(context).onFailure { throw it }
+            }
+
             val applied = mutableListOf<String>()
             val skippedUnknown = mutableListOf<String>()
             val skippedIncompatible = mutableListOf<String>()

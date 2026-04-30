@@ -31,6 +31,14 @@ interface BackupSection {
      * if they cannot be converted.
      */
     suspend fun import(context: Context, data: JsonElement, sourceVersion: Int)
+
+    /**
+     * Called for every section before any section's [import] runs. If any
+     * section returns a failure, the entire import is aborted and no writes
+     * happen. Use this to refuse imports that would weaken active locks or
+     * otherwise compromise on-device state. Default: always allow.
+     */
+    suspend fun precheckImport(context: Context): Result<Unit> = Result.success(Unit)
 }
 
 class BackupIncompatibleException(message: String) : Exception(message)
