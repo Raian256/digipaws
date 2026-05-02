@@ -127,56 +127,83 @@ val warningScreenConfig = Gson().fromJson<AppBlockerWarningScreenConfig>(
             }
 
         } else {
-            proceedTimer =
-                object : CountDownTimer(warningScreenConfig.proceedDelayInSecs * 1000L, 1000) {
+            var timerFinished = false
+
+            fun onTimerFinished() {
+                timerFinished = true
+                binding.proceedSeconds.visibility = View.GONE
+                binding.btnProceed.let { button ->
+                    if (!warningScreenConfig.isQrUnlockRequirementEnabled && warningScreenConfig.isDynamicIntervalSettingAllowed) {
+                        binding.minsPicker.visibility = View.VISIBLE
+                    }
+
+                    if (warningScreenConfig.isIntentRequirementEnabled) {
+                        // Intent input was shown upfront and triggered the timer.
+                        // Only enable proceed if the user hasn't cleared the field while waiting.
+                        button.setText(R.string.proceed)
+                        button.isEnabled = binding.intentInputEdit.text?.toString()?.trim()?.isNotEmpty() == true
+                    } else if (warningScreenConfig.isTypingRequirementEnabled) {
+                        binding.typingTargetSentence.visibility = View.VISIBLE
+                        binding.typingTargetSentence.text = "\"${warningScreenConfig.typingSentence}\""
+                        binding.typingInputLayout.visibility = View.VISIBLE
+                        button.isEnabled = false
+                        button.setText(R.string.proceed)
+
+                        binding.typingInputEdit.addTextChangedListener(object: android.text.TextWatcher {
+                            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+                            override fun afterTextChanged(s: android.text.Editable?) {
+                                button.isEnabled = s?.toString() == warningScreenConfig.typingSentence
+                            }
+                        })
+                    } else if (warningScreenConfig.isQrUnlockRequirementEnabled && !isQrScanned) {
+                        button.text = "Scan QR Code"
+                        button.isEnabled = true
+                    } else {
+                        button.setText(R.string.proceed)
+                        button.isEnabled = true
+                    }
+                }
+            }
+
+            fun startProceedTimer() {
+                proceedTimer = object : CountDownTimer(warningScreenConfig.proceedDelayInSecs * 1000L, 1000) {
                     override fun onTick(millisUntilFinished: Long) {
                         binding.proceedSeconds.text =
                             getString(R.string.proceed_in, millisUntilFinished / 1000)
                     }
-
                     override fun onFinish() {
-                        binding.btnProceed.let { button ->
-                            if (!warningScreenConfig.isQrUnlockRequirementEnabled && warningScreenConfig.isDynamicIntervalSettingAllowed) {
-                                binding.minsPicker.visibility = View.VISIBLE
-                            }
-
-                            if (warningScreenConfig.isIntentRequirementEnabled) {
-                                binding.intentInputLayout.visibility = View.VISIBLE
-                                button.isEnabled = false
-                                button.setText(R.string.proceed)
-
-                                binding.intentInputEdit.addTextChangedListener(object: android.text.TextWatcher {
-                                    override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-                                    override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-                                    override fun afterTextChanged(s: android.text.Editable?) {
-                                        button.isEnabled = s?.toString()?.trim()?.isNotEmpty() == true
-                                    }
-                                })
-                            } else if (warningScreenConfig.isTypingRequirementEnabled) {
-                                binding.typingTargetSentence.visibility = View.VISIBLE
-                                binding.typingTargetSentence.text = "\"${warningScreenConfig.typingSentence}\""
-                                binding.typingInputLayout.visibility = View.VISIBLE
-                                button.isEnabled = false
-                                button.setText(R.string.proceed)
-                                
-                                binding.typingInputEdit.addTextChangedListener(object: android.text.TextWatcher {
-                                    override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-                                    override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-                                    override fun afterTextChanged(s: android.text.Editable?) {
-                                        button.isEnabled = s?.toString() == warningScreenConfig.typingSentence
-                                    }
-                                })
-                            } else if (warningScreenConfig.isQrUnlockRequirementEnabled && !isQrScanned) {
-                                button.text = "Scan QR Code"
-                                button.isEnabled = true
-                            } else {
-                                button.setText(R.string.proceed)
-                                button.isEnabled = true
-                            }
-                        }
-                        binding.proceedSeconds.visibility = View.GONE
+                        onTimerFinished()
                     }
                 }.start()
+            }
+
+            if (warningScreenConfig.isIntentRequirementEnabled) {
+                // Intent first, then wait: input is visible immediately,
+                // and the countdown only begins once the user starts typing.
+                binding.intentInputLayout.visibility = View.VISIBLE
+                binding.proceedSeconds.text = getString(R.string.proceed_state_intent_first)
+                binding.btnProceed.isEnabled = false
+                binding.btnProceed.setText(R.string.proceed)
+
+                var timerStarted = false
+                binding.intentInputEdit.addTextChangedListener(object: android.text.TextWatcher {
+                    override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                    override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+                    override fun afterTextChanged(s: android.text.Editable?) {
+                        val intentText = s?.toString()?.trim() ?: ""
+                        if (!timerStarted && intentText.isNotEmpty()) {
+                            timerStarted = true
+                            startProceedTimer()
+                        }
+                        if (timerFinished) {
+                            binding.btnProceed.isEnabled = intentText.isNotEmpty()
+                        }
+                    }
+                })
+            } else {
+                startProceedTimer()
+            }
         }
 
         dialog = MaterialAlertDialogBuilder(this)

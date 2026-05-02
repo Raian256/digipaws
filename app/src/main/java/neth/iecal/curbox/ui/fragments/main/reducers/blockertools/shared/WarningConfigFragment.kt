@@ -38,8 +38,7 @@ class WarningConfigFragment : Fragment() {
         "Fixed unlock time",
         "Disable unlocking entirely",
         "Unlock requires QR/Barcode scanning",
-        "Unlock requires typing a sentence",
-        "Unlock requires stating an intent"
+        "Unlock requires typing a sentence"
     )
 
     private val barcodeLauncher = registerForActivityResult(ScanContract()) { result ->
@@ -85,7 +84,6 @@ class WarningConfigFragment : Fragment() {
         binding.unlockBehaviorDropdown.setAdapter(adapter)
 
         val initialIndex = when {
-            config.isIntentRequirementEnabled -> 6
             config.isTypingRequirementEnabled -> 5
             config.isQrUnlockRequirementEnabled -> 4
             config.isWarningDialogHidden -> 0
@@ -94,8 +92,9 @@ class WarningConfigFragment : Fragment() {
             else -> 2 // Fixed time
         }
         binding.unlockBehaviorDropdown.setText(behaviorOptions[initialIndex], false)
+        binding.intentRequirementSwitch.isChecked = config.isIntentRequirementEnabled
         updateUiVisibility(initialIndex)
-        
+
         binding.typingSentenceEdit.setText(config.typingSentence)
 
         // Setup Sliders
@@ -194,7 +193,8 @@ class WarningConfigFragment : Fragment() {
             val isProceedDisabled = bIdx == 3
             val isQrUnlockRequirementEnabled = bIdx == 4
             val isTypingRequirementEnabled = bIdx == 5
-            val isIntentRequirementEnabled = bIdx == 6
+            val supportsIntent = bIdx == 1 || bIdx == 2
+            val isIntentRequirementEnabled = supportsIntent && binding.intentRequirementSwitch.isChecked
 
             val config = AppBlockerWarningScreenConfig(
                 message = binding.warningMsgEdit.text.toString(),
@@ -262,11 +262,12 @@ class WarningConfigFragment : Fragment() {
         }
 
         binding.apply {
-            timingContainer.visibility = if (behaviorIndex == 2 || behaviorIndex == 5 || behaviorIndex == 6) View.VISIBLE else View.GONE
-            proceedDelayContainer.visibility = if (behaviorIndex in listOf(1, 2, 4, 5, 6)) View.VISIBLE else View.GONE
+            timingContainer.visibility = if (behaviorIndex == 2 || behaviorIndex == 5) View.VISIBLE else View.GONE
+            proceedDelayContainer.visibility = if (behaviorIndex in listOf(1, 2, 4, 5)) View.VISIBLE else View.GONE
             warningMsgLayout.visibility = if (behaviorIndex != 0) View.VISIBLE else View.GONE
             qrSetupContainer.visibility = if (behaviorIndex == 4) View.VISIBLE else View.GONE
             typingSetupContainer.visibility = if (behaviorIndex == 5) View.VISIBLE else View.GONE
+            intentToggleContainer.visibility = if (behaviorIndex == 1 || behaviorIndex == 2) View.VISIBLE else View.GONE
         }
     }
     

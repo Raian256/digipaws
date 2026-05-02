@@ -141,6 +141,7 @@
     <string name="anti_uninstall_cancel_removal">Cancel removal</string>
     <string name="configure_warning_screen">Warning Screen</string>
     <string name="proceed_in">Please wait %1$d seconds before pressing proceed</string>
+    <string name="proceed_state_intent_first">State your intent below to start the wait timer.</string>
     <string name="select_all">Select all</string>
     <string name="clear_all"> Clear all</string>
     <string name="focus_ready">Ready to focus?</string>
