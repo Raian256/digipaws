@@ -86,9 +86,7 @@ class FocusFragment : Fragment() {
                                 
                                 binding.btnExitAutoFocus.visibility = if (group.exitable) View.VISIBLE else View.GONE
                                 binding.btnExitAutoFocus.setOnClickListener {
-                                    val intent = android.content.Intent(neth.iecal.curbox.blockers.FocusModeBlocker.INTENT_ACTION_EXIT_AUTO_FOCUS)
-                                    intent.setPackage(requireContext().packageName)
-                                    requireContext().sendBroadcast(intent)
+                                    showExitAutoFocusDialog(group.groupId, group.groupName)
                                 }
                             } else {
                                 binding.cvActiveAutoFocus.visibility = View.GONE
@@ -207,6 +205,59 @@ class FocusFragment : Fragment() {
 
 
 
+
+    private fun showExitAutoFocusDialog(groupId: String, groupName: String) {
+        val ctx = requireContext()
+        val view = LayoutInflater.from(ctx).inflate(R.layout.dialog_exit_auto_focus, null)
+        val etIntent = view.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.et_intent)
+        val etMinutes = view.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.et_minutes)
+        val tilIntent = view.findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.til_intent)
+
+        val dialog = com.google.android.material.dialog.MaterialAlertDialogBuilder(ctx)
+            .setTitle(getString(R.string.exit_auto_focus_dialog_title))
+            .setView(view)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(android.R.string.ok, null)
+            .create()
+
+        dialog.setOnShowListener {
+            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val intentText = etIntent.text?.toString()?.trim().orEmpty()
+                val minutes = etMinutes.text?.toString()?.trim()?.toIntOrNull() ?: 0
+                if (intentText.isEmpty()) {
+                    tilIntent.error = getString(R.string.exit_auto_focus_intent_required)
+                    return@setOnClickListener
+                }
+                if (minutes <= 0) {
+                    etMinutes.error = getString(R.string.exit_auto_focus_minutes_required)
+                    return@setOnClickListener
+                }
+                val pauseMs = minutes * 60_000L
+
+                viewLifecycleOwner.lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                    val log = neth.iecal.curbox.data.db.IntentLogEntity(
+                        timestamp = System.currentTimeMillis(),
+                        packageName = "autofocus:$groupName",
+                        intentText = intentText,
+                        unlockedDurationMs = pauseMs
+                    )
+                    neth.iecal.curbox.data.db.AppDatabase.getInstance(ctx.applicationContext)
+                        .intentLogDao().insert(log)
+                }
+
+                val broadcastIntent = android.content.Intent(
+                    neth.iecal.curbox.blockers.FocusModeBlocker.INTENT_ACTION_EXIT_AUTO_FOCUS
+                )
+                broadcastIntent.setPackage(ctx.packageName)
+                broadcastIntent.putExtra("group_id", groupId)
+                broadcastIntent.putExtra("pause_minutes", minutes)
+                broadcastIntent.putExtra("intent_text", intentText)
+                ctx.sendBroadcast(broadcastIntent)
+                dialog.dismiss()
+            }
+        }
+        dialog.show()
+    }
 
     override fun onDestroyView() {
         super.onDestroyView()

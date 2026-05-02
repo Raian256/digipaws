@@ -8,6 +8,7 @@ data class AutoFocusGroup(
     val packages: HashSet<String>,
     val blockMode: FocusBlockMode,
     val exitable: Boolean = true,
+    val exitCooldownMinutes: Int = 0,
     var dailyIntervals: MutableMap<Int, MutableList<TimeInterval>> = mutableMapOf(),
     val autoTurnOnDnd: Boolean = false
 ) {

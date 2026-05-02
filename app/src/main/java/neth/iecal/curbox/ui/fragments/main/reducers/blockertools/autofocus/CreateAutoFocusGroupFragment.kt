@@ -99,6 +99,8 @@ class CreateAutoFocusGroupFragment : Fragment() {
                         }
                         
                         binding.switchExitable.isChecked = group.exitable
+                        binding.etExitCooldown.setText(group.exitCooldownMinutes.toString())
+                        binding.containerCooldown.visibility = if (group.exitable) View.VISIBLE else View.GONE
                         binding.switchDnd.isChecked = group.autoTurnOnDnd
 
                         binding.toolbar.menu.clear()
@@ -131,6 +133,11 @@ class CreateAutoFocusGroupFragment : Fragment() {
             }
         }
 
+        binding.containerCooldown.visibility = if (binding.switchExitable.isChecked) View.VISIBLE else View.GONE
+        binding.switchExitable.setOnCheckedChangeListener { _, isChecked ->
+            binding.containerCooldown.visibility = if (isChecked) View.VISIBLE else View.GONE
+        }
+
         binding.btnSelectApps.setOnClickListener {
             val intent = Intent(requireContext(), SelectAppsActivity::class.java)
             intent.putStringArrayListExtra("PRE_SELECTED_APPS", selectedApps)
@@ -156,6 +163,9 @@ class CreateAutoFocusGroupFragment : Fragment() {
             val isBlockSelected = binding.rgBlockingType.checkedRadioButtonId == R.id.rb_block_selected
             val blockMode = if (isBlockSelected) FocusBlockMode.BLOCK_SELECTED else FocusBlockMode.BLOCK_ALL_EXCEPT_SELECTED
             val exitable = binding.switchExitable.isChecked
+            val exitCooldownMinutes = if (exitable) {
+                binding.etExitCooldown.text?.toString()?.trim()?.toIntOrNull()?.coerceAtLeast(0) ?: 0
+            } else 0
             val autoTurnOnDnd = binding.switchDnd.isChecked
 
             val savedGroupId = requireActivity().intent.getStringExtra("group_id") ?: arguments?.getString("group_id")
@@ -168,6 +178,7 @@ class CreateAutoFocusGroupFragment : Fragment() {
                 packages = HashSet(selectedApps),
                 blockMode = blockMode,
                 exitable = exitable,
+                exitCooldownMinutes = exitCooldownMinutes,
                 dailyIntervals = viewModel.currentDailyIntervals,
                 autoTurnOnDnd = autoTurnOnDnd
             )

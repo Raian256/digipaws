@@ -294,6 +294,19 @@
     <string name="configure_schedule">Configure Schedule</string>
     <string name="exitable">Exitable</string>
     <string name="allow_focus_mode_to_be_exited">Allow focus mode to be exited manually</string>
+    <string name="exit_cooldown_minutes">Exit cooldown (minutes)</string>
+    <string name="exit_cooldown_helper">After pressing Stop, focus keeps blocking for this many minutes before actually exiting (0 = exit immediately)</string>
+    <string name="auto_focus_exit_pending_title">Auto Focus exit pending</string>
+    <string name="auto_focus_exit_pending_text">Exit will happen when the cooldown ends</string>
+    <string name="cancel_exit">Cancel exit</string>
+    <string name="exit_cooldown_started_toast">Exit will happen in %1$d minute(s)</string>
+    <string name="exit_auto_focus_dialog_title">Exit Auto Focus</string>
+    <string name="exit_auto_focus_intent_hint">Why are you stopping?</string>
+    <string name="exit_auto_focus_intent_helper">Your stated intent will be saved to the Intents log</string>
+    <string name="exit_auto_focus_minutes_hint">Pause for (minutes)</string>
+    <string name="exit_auto_focus_minutes_helper">After the cooldown, Auto Focus stays paused for this long before resuming</string>
+    <string name="exit_auto_focus_intent_required">Please state your intent</string>
+    <string name="exit_auto_focus_minutes_required">Please enter a number of minutes greater than zero</string>
     <string name="save_schedule">Save Schedule</string>
     <string name="track_the_number_of_short_videos">Track the number of short videos you scroll</string>
     <string name="grayscale_filter_setup">Grayscale Filter Setup</string>

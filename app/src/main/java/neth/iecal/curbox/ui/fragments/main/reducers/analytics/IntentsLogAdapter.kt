@@ -24,24 +24,35 @@ class IntentsLogAdapter(private val onDelete: (Int) -> Unit) : ListAdapter<Inten
         holder.binding.run {
             intentText.text = item.intentText
             timeText.text = DateUtils.getRelativeTimeSpanString(item.timestamp, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS)
-            durationText.text = "Unlocked for ${item.unlockedDurationMs / 60_000} mins"
 
-            val pm = root.context.packageManager
-            try {
-                val appInfo = pm.getApplicationInfo(item.packageName, 0)
-                appName.text = pm.getApplicationLabel(appInfo)
-                appIcon.setImageDrawable(pm.getApplicationIcon(appInfo))
-            } catch (e: PackageManager.NameNotFoundException) {
-                appName.text = item.packageName
+            if (item.packageName.startsWith(AUTOFOCUS_PREFIX)) {
+                val groupName = item.packageName.removePrefix(AUTOFOCUS_PREFIX)
+                appName.text = "Auto Focus — $groupName"
+                appIcon.setImageResource(neth.iecal.curbox.R.drawable.ic_focus)
+                durationText.text = "Paused for ${item.unlockedDurationMs / 60_000} mins"
+            } else {
+                durationText.text = "Unlocked for ${item.unlockedDurationMs / 60_000} mins"
+                val pm = root.context.packageManager
+                try {
+                    val appInfo = pm.getApplicationInfo(item.packageName, 0)
+                    appName.text = pm.getApplicationLabel(appInfo)
+                    appIcon.setImageDrawable(pm.getApplicationIcon(appInfo))
+                } catch (e: PackageManager.NameNotFoundException) {
+                    appName.text = item.packageName
+                }
             }
-            
+
             btnDelete.setOnClickListener {
                 onDelete(item.id)
             }
         }
     }
 
-    companion object DiffCallback : DiffUtil.ItemCallback<IntentLogEntity>() {
+    companion object {
+        const val AUTOFOCUS_PREFIX = "autofocus:"
+    }
+
+    object DiffCallback : DiffUtil.ItemCallback<IntentLogEntity>() {
         override fun areItemsTheSame(oldItem: IntentLogEntity, newItem: IntentLogEntity): Boolean {
             return oldItem.id == newItem.id
         }

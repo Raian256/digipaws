@@ -42,9 +42,12 @@ class FocusModeBlocker : BaseBlocker() {
     companion object {
         const val INTENT_ACTION_REFRESH_FOCUS_MODE = "neth.iecal.curbox.refresh.focus_mode"
         const val INTENT_ACTION_EXIT_AUTO_FOCUS = "neth.iecal.curbox.exit.auto_focus"
+        const val INTENT_ACTION_CANCEL_EXIT_AUTO_FOCUS = "neth.iecal.curbox.cancel_exit.auto_focus"
+        const val INTENT_ACTION_AUTO_FOCUS_RELEASE = "neth.iecal.curbox.auto_focus.release"
         const val INTENT_ACTION_UNSUSPEND_ALL = "neth.iecal.curbox.unsuspend_all_apps"
         private const val AUTO_FOCUS_NOTIFICATION_ID = 2001
         private const val AUTO_FOCUS_CHANNEL_ID = "AutoFocusChannel"
+        private const val RELEASE_ALARM_REQUEST_CODE = 9001
     }
 
     private var focusModeData: ManualFocusModeData? = null
@@ -54,6 +57,9 @@ class FocusModeBlocker : BaseBlocker() {
 
     private var autoFocusGroups: List<AutoFocusGroup> = emptyList()
     private val dismissedAutoFocusGroupIds = mutableSetOf<String>()
+    private val pendingExitTimes = mutableMapOf<String, Long>()
+    private val pendingExitPauseMs = mutableMapOf<String, Long>()
+    private val autoFocusResumeAt = mutableMapOf<String, Long>()
     private var autoFocusNotificationShown = false
     private var essentialPackages: Set<String> = emptySet()
     private var currentActiveAutoFocusGroupId: String? = null
@@ -61,7 +67,20 @@ class FocusModeBlocker : BaseBlocker() {
     private var currentlySuspendedPackages = setOf<String>()
     private var lastEvaluatedMinute = -1
 
+    private fun pruneExpiredAutoFocusResumes(): Boolean {
+        if (autoFocusResumeAt.isEmpty()) return false
+        val now = System.currentTimeMillis()
+        val expired = autoFocusResumeAt.filter { it.value <= now }.keys.toList()
+        if (expired.isEmpty()) return false
+        for (id in expired) {
+            autoFocusResumeAt.remove(id)
+            dismissedAutoFocusGroupIds.remove(id)
+        }
+        return true
+    }
+
     private fun updateSuspendedPackages(serviceContext: Context) {
+        pruneExpiredAutoFocusResumes()
         val newSuspendedPackages = mutableSetOf<String>()
 
                 var shouldDndBeOn = false
@@ -147,6 +166,10 @@ class FocusModeBlocker : BaseBlocker() {
         if (lastPackage == packageName) return
         lastPackage = packageName
 
+        if (pruneExpiredAutoFocusResumes()) {
+            updateSuspendedPackages(service)
+        }
+
         fun performBlock() {
             service.pressHome()
             lastPackage = ""
@@ -208,6 +231,12 @@ class FocusModeBlocker : BaseBlocker() {
         } else if (!anyAutoFocusActive && autoFocusNotificationShown) {
             hideAutoFocusNotification()
             dismissedAutoFocusGroupIds.clear()
+            autoFocusResumeAt.clear()
+            if (pendingExitTimes.isNotEmpty()) {
+                pendingExitTimes.clear()
+                pendingExitPauseMs.clear()
+                cancelReleaseAlarm()
+            }
         }
     }
 
@@ -242,26 +271,66 @@ class FocusModeBlocker : BaseBlocker() {
         }
 
         val nm = service.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val hasExitable = autoFocusGroups.any { it.exitable && !dismissedAutoFocusGroupIds.contains(it.groupId) }
+        val earliestPendingRelease = pendingExitTimes.values.minOrNull()
 
         val builder = NotificationCompat.Builder(service, AUTO_FOCUS_CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
-            .setContentTitle("Auto Focus is active")
-            .setContentText("Scheduled focus mode is running")
-            .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
 
-        if (hasExitable) {
-            val exitIntent = Intent(INTENT_ACTION_EXIT_AUTO_FOCUS)
-            val pendingIntent = PendingIntent.getBroadcast(
-                service, 0, exitIntent,
+        if (earliestPendingRelease != null) {
+            builder.setContentTitle(service.getString(R.string.auto_focus_exit_pending_title))
+                .setContentText(service.getString(R.string.auto_focus_exit_pending_text))
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setShowWhen(true)
+                .setWhen(earliestPendingRelease)
+                .setUsesChronometer(true)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                builder.setChronometerCountDown(true)
+            }
+            val cancelIntent = Intent(INTENT_ACTION_CANCEL_EXIT_AUTO_FOCUS).setPackage(service.packageName)
+            val cancelPi = PendingIntent.getBroadcast(
+                service, 1, cancelIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
-            builder.addAction(android.R.drawable.ic_delete, "Stop", pendingIntent)
+            builder.addAction(
+                android.R.drawable.ic_menu_close_clear_cancel,
+                service.getString(R.string.cancel_exit),
+                cancelPi
+            )
+        } else {
+            builder.setContentTitle("Auto Focus is active")
+                .setContentText("Scheduled focus mode is running")
+                .setPriority(NotificationCompat.PRIORITY_LOW)
         }
 
         nm.notify(AUTO_FOCUS_NOTIFICATION_ID, builder.build())
+    }
+
+    private fun scheduleReleaseAlarm() {
+        val nextRelease = pendingExitTimes.values.minOrNull() ?: return
+        val am = service.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
+        val intent = Intent(INTENT_ACTION_AUTO_FOCUS_RELEASE).setPackage(service.packageName)
+        val pi = PendingIntent.getBroadcast(
+            service, RELEASE_ALARM_REQUEST_CODE, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        am.cancel(pi)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            am.setExactAndAllowWhileIdle(android.app.AlarmManager.RTC_WAKEUP, nextRelease, pi)
+        } else {
+            am.setExact(android.app.AlarmManager.RTC_WAKEUP, nextRelease, pi)
+        }
+    }
+
+    private fun cancelReleaseAlarm() {
+        val am = service.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
+        val intent = Intent(INTENT_ACTION_AUTO_FOCUS_RELEASE).setPackage(service.packageName)
+        val pi = PendingIntent.getBroadcast(
+            service, RELEASE_ALARM_REQUEST_CODE, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        am.cancel(pi)
     }
 
     private fun hideAutoFocusNotification(wasForceStopped: Boolean = false, targetGroupId: String? = null) {
@@ -308,6 +377,8 @@ class FocusModeBlocker : BaseBlocker() {
         val filter = IntentFilter().apply {
             addAction(INTENT_ACTION_REFRESH_FOCUS_MODE)
             addAction(INTENT_ACTION_EXIT_AUTO_FOCUS)
+            addAction(INTENT_ACTION_CANCEL_EXIT_AUTO_FOCUS)
+            addAction(INTENT_ACTION_AUTO_FOCUS_RELEASE)
             addAction(INTENT_ACTION_UNSUSPEND_ALL)
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -375,14 +446,80 @@ class FocusModeBlocker : BaseBlocker() {
                 INTENT_ACTION_REFRESH_FOCUS_MODE -> setupFocusMode(service)
                 INTENT_ACTION_EXIT_AUTO_FOCUS -> {
                     val specificGroupId = intent.getStringExtra("group_id")
-                    if (specificGroupId != null) {
-                        dismissedAutoFocusGroupIds.add(specificGroupId)
-                        hideAutoFocusNotification(wasForceStopped = true, targetGroupId = specificGroupId)
+                    val pauseMinutes = intent.getIntExtra("pause_minutes", 0).coerceAtLeast(0)
+                    val pauseMs = pauseMinutes * 60_000L
+                    val targets = if (specificGroupId != null) {
+                        autoFocusGroups.filter { it.groupId == specificGroupId }
                     } else {
-                        autoFocusGroups.filter { it.exitable }.forEach {
-                            dismissedAutoFocusGroupIds.add(it.groupId)
+                        autoFocusGroups.filter {
+                            it.exitable && !dismissedAutoFocusGroupIds.contains(it.groupId)
+                        }
+                    }
+                    val now = System.currentTimeMillis()
+                    var maxScheduledMinutes = 0
+                    var anyImmediate = false
+                    for (group in targets) {
+                        if (group.exitCooldownMinutes <= 0) {
+                            dismissedAutoFocusGroupIds.add(group.groupId)
+                            if (pauseMs > 0) autoFocusResumeAt[group.groupId] = now + pauseMs
+                            anyImmediate = true
+                        } else if (!pendingExitTimes.containsKey(group.groupId)) {
+                            pendingExitTimes[group.groupId] = now + group.exitCooldownMinutes * 60_000L
+                            if (pauseMs > 0) pendingExitPauseMs[group.groupId] = pauseMs
+                            if (group.exitCooldownMinutes > maxScheduledMinutes) {
+                                maxScheduledMinutes = group.exitCooldownMinutes
+                            }
+                        }
+                    }
+                    if (anyImmediate) {
+                        if (specificGroupId != null) {
+                            hideAutoFocusNotification(wasForceStopped = true, targetGroupId = specificGroupId)
+                        } else {
+                            hideAutoFocusNotification(wasForceStopped = true)
+                        }
+                    }
+                    if (pendingExitTimes.isNotEmpty()) {
+                        autoFocusNotificationShown = false
+                        scheduleReleaseAlarm()
+                        if (maxScheduledMinutes > 0) {
+                            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                Toast.makeText(
+                                    service,
+                                    service.getString(R.string.exit_cooldown_started_toast, maxScheduledMinutes),
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
+                    }
+                    lastPackage = ""
+                    updateSuspendedPackages(service)
+                }
+                INTENT_ACTION_CANCEL_EXIT_AUTO_FOCUS -> {
+                    if (pendingExitTimes.isNotEmpty()) {
+                        pendingExitTimes.clear()
+                        pendingExitPauseMs.clear()
+                        cancelReleaseAlarm()
+                        autoFocusNotificationShown = false
+                    }
+                    lastPackage = ""
+                    updateSuspendedPackages(service)
+                }
+                INTENT_ACTION_AUTO_FOCUS_RELEASE -> {
+                    val now = System.currentTimeMillis()
+                    val ready = pendingExitTimes.filter { it.value <= now }.keys.toList()
+                    if (ready.isNotEmpty()) {
+                        for (groupId in ready) {
+                            pendingExitTimes.remove(groupId)
+                            dismissedAutoFocusGroupIds.add(groupId)
+                            val pauseMs = pendingExitPauseMs.remove(groupId)
+                            if (pauseMs != null && pauseMs > 0) {
+                                autoFocusResumeAt[groupId] = now + pauseMs
+                            }
                         }
                         hideAutoFocusNotification(wasForceStopped = true)
+                    }
+                    if (pendingExitTimes.isNotEmpty()) {
+                        scheduleReleaseAlarm()
                     }
                     lastPackage = ""
                     updateSuspendedPackages(service)
