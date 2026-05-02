@@ -8,7 +8,8 @@ data class AppGroup(
     val blockingType: AppBlockingType = AppBlockingType.Usage, // "USAGE" or "TIME"
     val isActive: Boolean = false,
     val setting:String = "",
-    val warningScreenConfig : AppBlockerWarningScreenConfig
+    val warningScreenConfig : AppBlockerWarningScreenConfig,
+    val autoAddNewApps: Boolean = false,
 )
 
 enum class AppBlockingType{

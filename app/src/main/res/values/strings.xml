@@ -395,4 +395,11 @@
     <string name="picker_notification_text">Tap to start picking an element</string>
     <string name="picker_active_title">Element Picker Active</string>
     <string name="picker_active_text">Tap elements on screen to select them</string>
+    <string name="auto_add_new_apps_title">Auto-add new apps</string>
+    <string name="auto_add_new_apps_subtitle">Newly installed apps are added to this group automatically.</string>
+    <string name="auto_add_channel_name">Auto-added apps</string>
+    <string name="auto_add_channel_description">Notifies when a newly installed app is auto-added to a blocker group.</string>
+    <string name="auto_add_notification_title">App added to blocker group</string>
+    <string name="auto_add_notification_text">%1$s was added to %2$s.</string>
+    <string name="auto_add_notification_text_multi">%1$s was added to %2$d groups.</string>
 </resources>

@@ -101,6 +101,7 @@ class CreateAppGroupFragment : Fragment() {
                             viewModel.currentTimeConfig = Gson().fromJson(group.setting, AppTimeConfig::class.java)
                         }
                         viewModel.warningScrnConfig = group.warningScreenConfig
+                        binding.switchAutoAddNewApps.isChecked = group.autoAddNewApps
 
                         binding.toolbar.menu.clear()
                         val deleteItem = binding.toolbar.menu.add(0, 1001, 0, "Delete")
@@ -190,7 +191,8 @@ class CreateAppGroupFragment : Fragment() {
             } else {
                 Gson().toJson(viewModel.currentTimeConfig)
             },
-            warningScreenConfig = viewModel.warningScrnConfig
+            warningScreenConfig = viewModel.warningScrnConfig,
+            autoAddNewApps = binding.switchAutoAddNewApps.isChecked,
         )
 
         if (isEditingRecord && targetExistingGroup != null) {
