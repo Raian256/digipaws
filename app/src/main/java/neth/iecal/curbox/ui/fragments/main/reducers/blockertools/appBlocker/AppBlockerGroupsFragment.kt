@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.CompoundButton
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -123,19 +124,21 @@ class AppBlockerGroupsFragment : Fragment() {
 
             val locked = AntiModificationsGate.isAppPauseLocked(antiMods, group.id)
 
-            holder.switchActive.setOnCheckedChangeListener { buttonView, isChecked ->
-                if (locked) {
-                    buttonView.setOnCheckedChangeListener(null)
-                    buttonView.isChecked = group.isActive
-                    AntiModificationsGate.refuseWithSnackbar(holder.itemView)
-                    // Re-bind the listener after revert so subsequent toggles work.
-                    holder.switchActive.setOnCheckedChangeListener { _, v ->
-                        viewModel.updateGroupActiveState(position, v)
+            val activeListener = object : CompoundButton.OnCheckedChangeListener {
+                override fun onCheckedChanged(buttonView: CompoundButton, isChecked: Boolean) {
+                    if (locked) {
+                        buttonView.setOnCheckedChangeListener(null)
+                        buttonView.isChecked = group.isActive
+                        AntiModificationsGate.refuseWithSnackbar(holder.itemView)
+                        // Re-bind the same locked-aware listener so the next toggle is
+                        // also refused — re-binding a lock-less variant defeats the lock.
+                        buttonView.setOnCheckedChangeListener(this)
+                        return
                     }
-                    return@setOnCheckedChangeListener
+                    viewModel.updateGroupActiveState(position, isChecked)
                 }
-                viewModel.updateGroupActiveState(position, isChecked)
             }
+            holder.switchActive.setOnCheckedChangeListener(activeListener)
 
             holder.itemView.setOnClickListener {
                 if (locked) {
