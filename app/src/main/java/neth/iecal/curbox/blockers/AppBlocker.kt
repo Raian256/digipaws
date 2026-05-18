@@ -60,11 +60,17 @@ class AppBlocker() : BaseBlocker() {
     private var cooldownAppsList = HashMap<String, Long>()
 
     /**
-     * Stores general simple general list of block apps with their configs
+     * Per-package list of all active groups that cover the package. Storing a
+     * list (not a single config) is what stops the multi-group bypass:
+     * creating a second, looser group used to overwrite the stricter one in a
+     * package-keyed map. Now every group's rule is evaluated, and the
+     * strictest one wins.
      */
-    var blockedAppsList = HashMap<String, AppUsageConfig>()
-    var timeBlockedAppsList = HashMap<String, AppTimeConfig>()
-    private var appBlockerWarningScrnConfgs = HashMap<String, AppBlockerWarningScreenConfig>()
+    private data class UsageEntry(val config: AppUsageConfig, val warning: AppBlockerWarningScreenConfig)
+    private data class TimeEntry(val config: AppTimeConfig, val warning: AppBlockerWarningScreenConfig)
+
+    private var blockedAppsList = HashMap<String, MutableList<UsageEntry>>()
+    private var timeBlockedAppsList = HashMap<String, MutableList<TimeEntry>>()
 
     private lateinit var usageStats : UsageStatsHelper
     private var lastPackage = ""
@@ -99,33 +105,48 @@ class AppBlocker() : BaseBlocker() {
                 return // Still in cooldown, let them use it
             }
         }
-        // Check Time Blocks
-        if (timeBlockedAppsList.contains(packageName)) {
-            val endAllowedRealTime = getEndTimeInRealTimeMillis(packageName)
-            if (endAllowedRealTime == null) {
-                notificationManager.stopTimer()
-                showWarningScreen(packageName)
-                return
-            } else {
-                setUpForcedRefreshChecker(packageName, endAllowedRealTime)
+        // Check Time Blocks — app blocked if currently outside ANY active
+        // group's allowed window. Earliest allowed-window end among matching
+        // groups drives the next forced refresh.
+        val timeEntries = timeBlockedAppsList[packageName]
+        if (!timeEntries.isNullOrEmpty()) {
+            var earliestEnd: Long = Long.MAX_VALUE
+            for (entry in timeEntries) {
+                val endAllowedRealTime = getEndTimeInRealTimeMillis(entry.config)
+                if (endAllowedRealTime == null) {
+                    notificationManager.stopTimer()
+                    showWarningScreen(packageName)
+                    return
+                }
+                if (endAllowedRealTime < earliestEnd) earliestEnd = endAllowedRealTime
+            }
+            if (earliestEnd != Long.MAX_VALUE) {
+                setUpForcedRefreshChecker(packageName, earliestEnd)
             }
         }
         Log.d("checking","checking ${event.packageName}")
 
-        // Check Usage Blocks
-        if (blockedAppsList.contains(packageName)) {
-            val config = blockedAppsList[packageName]!!
+        // Check Usage Blocks — app blocked if ANY active group's daily limit
+        // is exceeded. Notification timer + recheck use the minimum remaining
+        // time across all covering groups.
+        val usageEntries = blockedAppsList[packageName]
+        if (!usageEntries.isNullOrEmpty()) {
             val currentUsage = usageStats.getForegroundStatsByRelativeDay(0)
                 .firstOrNull { it.packageName == packageName }?.totalTime ?: 0L
-            val usageLimitMillis = getUsageLimitForToday(config) * 60_000L
-            val remainingUsage = usageLimitMillis - currentUsage
-
-            if (remainingUsage <= 0) {
-                notificationManager.stopTimer()
-                showWarningScreen(packageName)
-            } else {
-                notificationManager.startTimer(totalMillis = remainingUsage, timerId = packageName, title = "Remaining usage before lockdown")
-                setUpForcedRefreshChecker(packageName, System.currentTimeMillis() + remainingUsage)
+            var minRemaining = Long.MAX_VALUE
+            for (entry in usageEntries) {
+                val usageLimitMillis = getUsageLimitForToday(entry.config) * 60_000L
+                val remainingUsage = usageLimitMillis - currentUsage
+                if (remainingUsage <= 0) {
+                    notificationManager.stopTimer()
+                    showWarningScreen(packageName)
+                    return
+                }
+                if (remainingUsage < minRemaining) minRemaining = remainingUsage
+            }
+            if (minRemaining != Long.MAX_VALUE) {
+                notificationManager.startTimer(totalMillis = minRemaining, timerId = packageName, title = "Remaining usage before lockdown")
+                setUpForcedRefreshChecker(packageName, System.currentTimeMillis() + minRemaining)
                 return
             }
         }
@@ -162,24 +183,23 @@ class AppBlocker() : BaseBlocker() {
         essentialPackages = getEssentialPackages(service)
         CoroutineScope(Dispatchers.IO).launch {
             service.dataStoreManager.settings.collectLatest { settings ->
-                // Clear existing thread-safe maps and repopulate them
+                // Rebuild per-package entry lists from scratch on every refresh.
                 blockedAppsList.clear()
                 timeBlockedAppsList.clear()
-                appBlockerWarningScrnConfgs.clear()
 
                 settings.blockedAppGroups.forEach { group ->
                     if (!group.isActive) return@forEach
                     if (group.blockingType == AppBlockingType.Usage) {
                         val appUsageConfig = Gson().fromJson(group.setting, AppUsageConfig::class.java)
-                        group.selectedPackages.forEach {
-                            blockedAppsList[it] = appUsageConfig
-                            appBlockerWarningScrnConfgs[it] = group.warningScreenConfig
+                        val entry = UsageEntry(appUsageConfig, group.warningScreenConfig)
+                        group.selectedPackages.forEach { pkg ->
+                            blockedAppsList.getOrPut(pkg) { mutableListOf() }.add(entry)
                         }
                     } else {
                         val appTimedConfig = Gson().fromJson(group.setting, AppTimeConfig::class.java)
-                        group.selectedPackages.forEach {
-                            timeBlockedAppsList[it] = appTimedConfig
-                            appBlockerWarningScrnConfgs[it] = group.warningScreenConfig
+                        val entry = TimeEntry(appTimedConfig, group.warningScreenConfig)
+                        group.selectedPackages.forEach { pkg ->
+                            timeBlockedAppsList.getOrPut(pkg) { mutableListOf() }.add(entry)
                         }
                     }
                 }
@@ -195,7 +215,7 @@ class AppBlocker() : BaseBlocker() {
 
         val durationMillis = intent.getIntExtra(
             "selected_time",
-            appBlockerWarningScrnConfgs[coolPackage]?.timeInterval ?: 10
+            mergedStrictestWarning(coolPackage)?.timeInterval ?: 10
         )
         Log.d("cooldown for ", durationMillis.toString())
         val realTimeEndMillis = System.currentTimeMillis() + durationMillis
@@ -249,8 +269,69 @@ class AppBlocker() : BaseBlocker() {
         }
     }
 
-    private fun getEndTimeInRealTimeMillis(packageName: String): Long? {
-        val config = timeBlockedAppsList[packageName] ?: return null
+    /**
+     * Synthesizes the strictest warning config across every active group
+     * covering [packageName]. The user must satisfy the constraints of EVERY
+     * group at once, so each field is aggregated to its most-restrictive
+     * value — otherwise adding a looser group would weaken the proceed wait,
+     * the typing/QR/intent requirements, or the proceed-limit budget.
+     *
+     * Rules:
+     *  - `timeInterval` (unlock-grant length): min
+     *  - `proceedDelayInSecs` (wait before proceed enables): max
+     *  - `proceedsTimeWindowMn` (proceed-budget window): max
+     *  - `allowedProceeds` (proceeds per window): min (when any group enables the limit)
+     *  - Any boolean restriction (`isProceedDisabled`, `isWarningDialogHidden`,
+     *    `isQrUnlockRequirementEnabled`, `isTypingRequirementEnabled`,
+     *    `isIntentRequirementEnabled`, `proceedLimitEnabled`,
+     *    `vibrateAndIncBrightness`): true if ANY group sets it
+     *  - `isDynamicIntervalSettingAllowed`: only true if ALL groups allow it
+     *    (dynamic = user picks, which is looser)
+     *  - `qrKeys`: union — required so any of the user's QR codes still works
+     *  - `typingSentence`: longest non-empty (more effort = stricter), picked
+     *    only from groups that enable typing
+     *  - `message`: first non-default it finds; purely informational
+     */
+    private fun mergedStrictestWarning(packageName: String): AppBlockerWarningScreenConfig? {
+        val warnings = buildList {
+            timeBlockedAppsList[packageName]?.forEach { add(it.warning) }
+            blockedAppsList[packageName]?.forEach { add(it.warning) }
+        }
+        if (warnings.isEmpty()) return null
+
+        val defaults = AppBlockerWarningScreenConfig()
+        val anyTypingEnabled = warnings.any { it.isTypingRequirementEnabled }
+        val anyProceedLimit = warnings.any { it.proceedLimitEnabled }
+        val mergedQrKeys = warnings.flatMap { it.qrKeys.entries }.associate { it.key to it.value }
+
+        return AppBlockerWarningScreenConfig(
+            message = warnings.firstOrNull { it.message != defaults.message }?.message ?: defaults.message,
+            timeInterval = warnings.minOf { it.timeInterval },
+            isDynamicIntervalSettingAllowed = warnings.all { it.isDynamicIntervalSettingAllowed },
+            isProceedDisabled = warnings.any { it.isProceedDisabled },
+            isWarningDialogHidden = warnings.any { it.isWarningDialogHidden },
+            proceedDelayInSecs = warnings.maxOf { it.proceedDelayInSecs },
+            vibrateAndIncBrightness = warnings.any { it.vibrateAndIncBrightness },
+            proceedLimitEnabled = anyProceedLimit,
+            allowedProceeds = if (anyProceedLimit) {
+                warnings.filter { it.proceedLimitEnabled }.minOf { it.allowedProceeds }
+            } else defaults.allowedProceeds,
+            proceedsTimeWindowMn = if (anyProceedLimit) {
+                warnings.filter { it.proceedLimitEnabled }.maxOf { it.proceedsTimeWindowMn }
+            } else defaults.proceedsTimeWindowMn,
+            isQrUnlockRequirementEnabled = warnings.any { it.isQrUnlockRequirementEnabled },
+            qrKeys = mergedQrKeys,
+            isTypingRequirementEnabled = anyTypingEnabled,
+            typingSentence = if (anyTypingEnabled) {
+                warnings.filter { it.isTypingRequirementEnabled && it.typingSentence.isNotEmpty() }
+                    .maxByOrNull { it.typingSentence.length }
+                    ?.typingSentence ?: ""
+            } else "",
+            isIntentRequirementEnabled = warnings.any { it.isIntentRequirementEnabled },
+        )
+    }
+
+    private fun getEndTimeInRealTimeMillis(config: AppTimeConfig): Long? {
         val calendar = Calendar.getInstance()
         val currentMinutes = TimeTools.convertToMinutesFromMidnight(
             calendar.get(Calendar.HOUR_OF_DAY),
@@ -320,14 +401,18 @@ class AppBlocker() : BaseBlocker() {
             ShizukuRunner.executeCommand("am force-stop $packageName", object : ShizukuRunner.CommandResultListener {})
         }
 
-        if (appBlockerWarningScrnConfgs[packageName]?.isWarningDialogHidden == true) return
+        // Use the strictness-merged config so the warning screen reflects
+        // every group's constraints at once — not just whichever entry was
+        // first to trigger the block.
+        val warning = mergedStrictestWarning(packageName) ?: return
+        if (warning.isWarningDialogHidden) return
 
         handler.postDelayed({
             val dialogIntent = Intent(service, WarningActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                 putExtra("mode", Constants.WARNING_SCREEN_MODE_APP_BLOCKER)
                 putExtra("result_id", packageName)
-                putExtra("warning_config", Gson().toJson(appBlockerWarningScrnConfgs[packageName]))
+                putExtra("warning_config", Gson().toJson(warning))
             }
             service.startActivity(dialogIntent)
         }, 300)
