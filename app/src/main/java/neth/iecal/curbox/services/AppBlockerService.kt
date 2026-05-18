@@ -24,6 +24,7 @@ import neth.iecal.curbox.blockers.KeywordBlocker
 import neth.iecal.curbox.blockers.ReelBlocker
 import neth.iecal.curbox.blockers.viewblocker.ElementPickerNotification
 import neth.iecal.curbox.blockers.viewblocker.ViewBlocker
+import neth.iecal.curbox.receivers.PackageInstallReceiver
 import neth.iecal.curbox.ui.fragments.main.reducers.blockertools.viewBlocker.ViewBlockerFragment
 
 @Suppress("DEPRECATION")
@@ -36,6 +37,8 @@ class AppBlockerService : BaseBlockingService() {
     private val viewBlocker = ViewBlocker()
     private val antiUninstallBlocker = AntiUninstallBlocker()
     private var pickerNotification: ElementPickerNotification? = null
+
+    private val packageInstallReceiver = PackageInstallReceiver()
 
     private val pickerReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -156,6 +159,17 @@ class AppBlockerService : BaseBlockingService() {
             registerReceiver(pickerReceiver, pickerFilter)
         }
 
+        // PACKAGE_ADDED is not in the API 26+ implicit-broadcast exemption list,
+        // so a manifest receiver is never delivered. Register at runtime instead.
+        val packageFilter = IntentFilter(Intent.ACTION_PACKAGE_ADDED).apply {
+            addDataScheme("package")
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(packageInstallReceiver, packageFilter, Context.RECEIVER_EXPORTED)
+        } else {
+            registerReceiver(packageInstallReceiver, packageFilter)
+        }
+
         startBackgroundWorker()
     }
 
@@ -170,6 +184,7 @@ class AppBlockerService : BaseBlockingService() {
             grayScaleFilter.unregisterReceivers()
             viewBlocker.removeReceivers()
             try { unregisterReceiver(pickerReceiver) } catch (_: Exception) {}
+            try { unregisterReceiver(packageInstallReceiver) } catch (_: Exception) {}
             pickerNotification?.cancelNotification()
 
             eventChannel.close()
