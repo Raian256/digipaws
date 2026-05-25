@@ -2,6 +2,8 @@ package neth.iecal.curbox.ui.fragments.main.reducers.blockertools.appBlocker
 
 import android.content.Intent
 import android.os.Bundle
+import android.provider.Settings
+import neth.iecal.curbox.services.MediaNotifSilencer
 import android.view.LayoutInflater
 import android.view.MenuItem
 import android.view.View
@@ -102,6 +104,7 @@ class CreateAppGroupFragment : Fragment() {
                         }
                         viewModel.warningScrnConfig = group.warningScreenConfig
                         binding.switchAutoAddNewApps.isChecked = group.autoAddNewApps
+                        binding.switchKillBackgroundAudio.isChecked = group.killBackgroundAudio
 
                         binding.toolbar.menu.clear()
                         val deleteItem = binding.toolbar.menu.add(0, 1001, 0, "Delete")
@@ -153,6 +156,25 @@ class CreateAppGroupFragment : Fragment() {
             }
         }
 
+        binding.switchKillBackgroundAudio.setOnCheckedChangeListener { _, isChecked ->
+            // Hard requirement: feature is a no-op without notification listener access.
+            // Bounce the user to the settings page the first time they flip it on while
+            // access is missing. Don't auto-uncheck — they can come back, the listener
+            // will pick up the silence broadcasts as soon as it's granted.
+            if (isChecked && !MediaNotifSilencer.isEnabled(requireContext())) {
+                Toast.makeText(
+                    requireContext(),
+                    getString(R.string.kill_background_audio_needs_listener),
+                    Toast.LENGTH_LONG
+                ).show()
+                try {
+                    startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                } catch (_: Exception) {
+                    startActivity(Intent(Settings.ACTION_SETTINGS))
+                }
+            }
+        }
+
         binding.fabSaveGroup.setOnClickListener {
             saveGroup()
         }
@@ -193,6 +215,7 @@ class CreateAppGroupFragment : Fragment() {
             },
             warningScreenConfig = viewModel.warningScrnConfig,
             autoAddNewApps = binding.switchAutoAddNewApps.isChecked,
+            killBackgroundAudio = binding.switchKillBackgroundAudio.isChecked,
         )
 
         if (isEditingRecord && targetExistingGroup != null) {

@@ -10,6 +10,7 @@ data class AppGroup(
     val setting:String = "",
     val warningScreenConfig : AppBlockerWarningScreenConfig,
     val autoAddNewApps: Boolean = false,
+    val killBackgroundAudio: Boolean = false,
 )
 
 enum class AppBlockingType{

@@ -75,6 +75,16 @@
                 android:resource="@xml/usage_tracker_service_config" />
         </service>
 
+        <service
+            android:name=".services.MediaNotifSilencer"
+            android:exported="true"
+            android:label="Curbox - Background Audio Silencer"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
         <receiver
             android:name=".receivers.AdminReceiver"
             android:description="@string/admin_permission_desc"

@@ -24,6 +24,7 @@ import neth.iecal.curbox.data.models.AppBlockingType
 import neth.iecal.curbox.data.models.AppTimeConfig
 import neth.iecal.curbox.data.models.AppUsageConfig
 import neth.iecal.curbox.services.BaseBlockingService
+import neth.iecal.curbox.services.MediaNotifSilencer
 import neth.iecal.curbox.ui.activity.WarningActivity
 import neth.iecal.curbox.utils.AppSuspendHelper
 import neth.iecal.curbox.utils.ShizukuRunner
@@ -66,11 +67,18 @@ class AppBlocker() : BaseBlocker() {
      * package-keyed map. Now every group's rule is evaluated, and the
      * strictest one wins.
      */
-    private data class UsageEntry(val config: AppUsageConfig, val warning: AppBlockerWarningScreenConfig)
-    private data class TimeEntry(val config: AppTimeConfig, val warning: AppBlockerWarningScreenConfig)
+    private data class UsageEntry(val config: AppUsageConfig, val warning: AppBlockerWarningScreenConfig, val killBackgroundAudio: Boolean)
+    private data class TimeEntry(val config: AppTimeConfig, val warning: AppBlockerWarningScreenConfig, val killBackgroundAudio: Boolean)
 
     private var blockedAppsList = HashMap<String, MutableList<UsageEntry>>()
     private var timeBlockedAppsList = HashMap<String, MutableList<TimeEntry>>()
+
+    /**
+     * Packages we've asked MediaNotifSilencer to silence. Kept so we can send
+     * UNSILENCE when the block clears (next allowed window, fresh daily quota,
+     * or the user editing the group to drop killBackgroundAudio).
+     */
+    private val audioSilencedPackages = mutableSetOf<String>()
 
     private lateinit var usageStats : UsageStatsHelper
     private var lastPackage = ""
@@ -102,6 +110,7 @@ class AppBlocker() : BaseBlocker() {
                 removeCooldownFrom(packageName)
             } else {
                 notificationManager.startTimer(totalMillis = cooldownAppsList[packageName]!! - System.currentTimeMillis(), timerId = packageName, title = "Remaining usage before lockdown")
+                releaseAudioSilence(packageName) // cooldown grants usage, so unblock audio too
                 return // Still in cooldown, let them use it
             }
         }
@@ -147,11 +156,13 @@ class AppBlocker() : BaseBlocker() {
             if (minRemaining != Long.MAX_VALUE) {
                 notificationManager.startTimer(totalMillis = minRemaining, timerId = packageName, title = "Remaining usage before lockdown")
                 setUpForcedRefreshChecker(packageName, System.currentTimeMillis() + minRemaining)
+                releaseAudioSilence(packageName) // currently within budget
                 return
             }
         }
 
         notificationManager.stopTimer()
+        releaseAudioSilence(packageName)
     }
 
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
@@ -191,13 +202,13 @@ class AppBlocker() : BaseBlocker() {
                     if (!group.isActive) return@forEach
                     if (group.blockingType == AppBlockingType.Usage) {
                         val appUsageConfig = Gson().fromJson(group.setting, AppUsageConfig::class.java)
-                        val entry = UsageEntry(appUsageConfig, group.warningScreenConfig)
+                        val entry = UsageEntry(appUsageConfig, group.warningScreenConfig, group.killBackgroundAudio)
                         group.selectedPackages.forEach { pkg ->
                             blockedAppsList.getOrPut(pkg) { mutableListOf() }.add(entry)
                         }
                     } else {
                         val appTimedConfig = Gson().fromJson(group.setting, AppTimeConfig::class.java)
-                        val entry = TimeEntry(appTimedConfig, group.warningScreenConfig)
+                        val entry = TimeEntry(appTimedConfig, group.warningScreenConfig, group.killBackgroundAudio)
                         group.selectedPackages.forEach { pkg ->
                             timeBlockedAppsList.getOrPut(pkg) { mutableListOf() }.add(entry)
                         }
@@ -205,6 +216,9 @@ class AppBlocker() : BaseBlocker() {
                 }
                 Log.d("loaded blocked apps",blockedAppsList.toString())
 
+                // Drop silences for packages whose audio-killing groups went away.
+                val stillCovered = audioSilencedPackages.filter { hasAudioKilling(it) }.toSet()
+                (audioSilencedPackages - stillCovered).forEach { releaseAudioSilence(it) }
             }
         }
 
@@ -224,6 +238,34 @@ class AppBlocker() : BaseBlocker() {
 
         putCooldownTo(coolPackage, realTimeEndMillis)
         setUpForcedRefreshChecker(coolPackage, realTimeEndMillis)
+        // User earned a cooldown — restore audio (they're using the app on purpose now).
+        releaseAudioSilence(coolPackage)
+    }
+
+    /**
+     * True if any active group covering [pkg] opted into killBackgroundAudio.
+     */
+    private fun hasAudioKilling(pkg: String): Boolean {
+        val usageHits = blockedAppsList[pkg]?.any { it.killBackgroundAudio } == true
+        val timedHits = timeBlockedAppsList[pkg]?.any { it.killBackgroundAudio } == true
+        return usageHits || timedHits
+    }
+
+    /**
+     * Tell the listener to pause+dismiss the package's media. Safe to call
+     * repeatedly — the listener treats it as a re-poke (handles apps that
+     * re-post media controls after the first dismissal).
+     */
+    private fun requestAudioSilence(pkg: String) {
+        if (!hasAudioKilling(pkg)) return
+        audioSilencedPackages.add(pkg)
+        MediaNotifSilencer.sendSilence(service, pkg)
+    }
+
+    private fun releaseAudioSilence(pkg: String) {
+        if (audioSilencedPackages.remove(pkg)) {
+            MediaNotifSilencer.sendUnsilence(service, pkg)
+        }
     }
 
     private fun getUsageLimitForToday(config: AppUsageConfig): Long {
@@ -374,10 +416,18 @@ class AppBlocker() : BaseBlocker() {
 
         val runnable = Runnable {
             try {
-                if (service.rootInActiveWindow?.packageName == coolPackage) {
+                val isForeground = service.rootInActiveWindow?.packageName == coolPackage
+                if (isForeground) {
                     removeCooldownFrom(coolPackage)
                     showWarningScreen(coolPackage)
                     lastPackage = ""
+                } else if (hasAudioKilling(coolPackage)) {
+                    // App's window expired or its usage budget ran out while
+                    // it's playing in the background. We can't render a
+                    // warning here, but we can drop its media session + notif
+                    // so the user can't keep playing from the shade.
+                    removeCooldownFrom(coolPackage)
+                    requestAudioSilence(coolPackage)
                 }
             } catch (e: Exception) {
                 Log.e("AppBlocker", "Recheck error: $e")
@@ -396,6 +446,10 @@ class AppBlocker() : BaseBlocker() {
         notificationManager.stopTimer()
         service.pressHome()
         lastPackage = ""
+
+        // Silence any background audio session up-front; press-home + warning
+        // dialog don't stop a media session from playing on their own.
+        requestAudioSilence(packageName)
 
         if (AppSuspendHelper.isShizukuAvailable()) {
             ShizukuRunner.executeCommand("am force-stop $packageName", object : ShizukuRunner.CommandResultListener {})
