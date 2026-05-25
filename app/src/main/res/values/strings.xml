@@ -308,6 +308,9 @@
     <string name="exit_auto_focus_minutes_helper">After the cooldown, Auto Focus stays paused for this long before resuming</string>
     <string name="exit_auto_focus_intent_required">Please state your intent</string>
     <string name="exit_auto_focus_minutes_required">Please enter a number of minutes greater than zero</string>
+    <string name="exit_cooldown_already_running">Exit cooldown is already running</string>
+    <string name="exit_cooldown_pending_button">Exit pending…</string>
+    <string name="stop_auto_focus">Stop Auto Focus</string>
     <string name="save_schedule">Save Schedule</string>
     <string name="track_the_number_of_short_videos">Track the number of short videos you scroll</string>
     <string name="grayscale_filter_setup">Grayscale Filter Setup</string>

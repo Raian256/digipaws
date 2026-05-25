@@ -458,6 +458,7 @@ class FocusModeBlocker : BaseBlocker() {
                     val now = System.currentTimeMillis()
                     var maxScheduledMinutes = 0
                     var anyImmediate = false
+                    var anyNewlyScheduled = false
                     for (group in targets) {
                         if (group.exitCooldownMinutes <= 0) {
                             dismissedAutoFocusGroupIds.add(group.groupId)
@@ -469,6 +470,7 @@ class FocusModeBlocker : BaseBlocker() {
                             if (group.exitCooldownMinutes > maxScheduledMinutes) {
                                 maxScheduledMinutes = group.exitCooldownMinutes
                             }
+                            anyNewlyScheduled = true
                         }
                     }
                     if (anyImmediate) {
@@ -478,7 +480,7 @@ class FocusModeBlocker : BaseBlocker() {
                             hideAutoFocusNotification(wasForceStopped = true)
                         }
                     }
-                    if (pendingExitTimes.isNotEmpty()) {
+                    if (anyNewlyScheduled) {
                         autoFocusNotificationShown = false
                         scheduleReleaseAlarm()
                         if (maxScheduledMinutes > 0) {
@@ -491,8 +493,10 @@ class FocusModeBlocker : BaseBlocker() {
                             }
                         }
                     }
-                    lastPackage = ""
-                    updateSuspendedPackages(service)
+                    if (anyImmediate || anyNewlyScheduled) {
+                        lastPackage = ""
+                        updateSuspendedPackages(service)
+                    }
                 }
                 INTENT_ACTION_CANCEL_EXIT_AUTO_FOCUS -> {
                     if (pendingExitTimes.isNotEmpty()) {
