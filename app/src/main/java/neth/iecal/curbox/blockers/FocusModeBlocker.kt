@@ -183,6 +183,20 @@ class FocusModeBlocker : BaseBlocker() {
 //            Toast.makeText(service, service.getString(R.string.this_app_is_currently_under_focus), Toast.LENGTH_LONG).show()
         }
 
+        fun performAutoFocusBlock(blockedPackage: String, group: AutoFocusGroup) {
+            Toast.makeText(
+                service,
+                service.getString(
+                    R.string.auto_focus_blocked_banner,
+                    blockedPackage,
+                    group.groupName
+                ),
+                Toast.LENGTH_LONG
+            ).show()
+            service.pressHome()
+            lastPackage = ""
+        }
+
         if (focusModeData != null) {
             when (focusModeData!!.focusGroupData.blockMode) {
                 FocusBlockMode.BLOCK_SELECTED -> {
@@ -228,7 +242,7 @@ class FocusModeBlocker : BaseBlocker() {
                     !group.packages.contains(packageName) && !essentialPackages.contains(packageName)
             }
             if (blocked) {
-                performBlock()
+                performAutoFocusBlock(packageName, group)
                 break
             }
         }
