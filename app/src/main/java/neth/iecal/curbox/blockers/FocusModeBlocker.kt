@@ -28,6 +28,7 @@ import neth.iecal.curbox.data.models.ManualFocusGroup
 import neth.iecal.curbox.data.models.TimeInterval
 import neth.iecal.curbox.services.BaseBlockingService
 import neth.iecal.curbox.utils.AppSuspendHelper
+import neth.iecal.curbox.utils.SystemOverlayDetector
 import neth.iecal.curbox.utils.TimerNotification
 import neth.iecal.curbox.utils.getEssentialPackages
 import java.util.Calendar
@@ -164,6 +165,12 @@ class FocusModeBlocker : BaseBlocker() {
     fun doFocusModeCheck(event: AccessibilityEvent?) {
         val packageName = event?.packageName.toString()
         if (lastPackage == packageName) return
+        // System-signed overlays (Pixel Extreme Battery Saver "Use anyway?",
+        // permission dialogs, package installer) briefly bring a non-app
+        // package to the foreground on top of the real app. Pressing Home
+        // would dismiss the dialog before the user can answer. Skip without
+        // updating lastPackage so the underlying app's re-show still runs.
+        if (event != null && SystemOverlayDetector.isSystemOverlay(service, event)) return
         lastPackage = packageName
 
         if (pruneExpiredAutoFocusResumes()) {

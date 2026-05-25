@@ -28,6 +28,7 @@ import neth.iecal.curbox.services.MediaNotifSilencer
 import neth.iecal.curbox.ui.activity.WarningActivity
 import neth.iecal.curbox.utils.AppSuspendHelper
 import neth.iecal.curbox.utils.ShizukuRunner
+import neth.iecal.curbox.utils.SystemOverlayDetector
 import neth.iecal.curbox.utils.TimeTools
 import neth.iecal.curbox.utils.TimerNotification
 import neth.iecal.curbox.utils.UsageStatsHelper
@@ -101,6 +102,11 @@ class AppBlocker() : BaseBlocker() {
         val packageName = event.packageName?.toString() ?: return
 
         if (lastPackage == packageName || essentialPackages.contains(packageName)) return
+
+        // Same overlay guard as FocusModeBlocker: a system-signed dialog
+        // (permission prompt, installer confirm, Pixel battery-saver "Use
+        // anyway?") isn't a real foreground app and shouldn't be home-pressed.
+        if (SystemOverlayDetector.isSystemOverlay(service, event)) return
 
         lastPackage = packageName
 
