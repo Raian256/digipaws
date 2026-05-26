@@ -14,6 +14,7 @@ import android.content.Context
  */
 fun getEssentialPackages(context: Context): Set<String> {
     val essential = mutableSetOf(
+        "android",
         "com.android.systemui",
         context.packageName,
     )
