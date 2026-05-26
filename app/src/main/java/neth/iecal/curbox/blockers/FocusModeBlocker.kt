@@ -49,6 +49,13 @@ class FocusModeBlocker : BaseBlocker() {
         private const val AUTO_FOCUS_NOTIFICATION_ID = 2001
         private const val AUTO_FOCUS_CHANNEL_ID = "AutoFocusChannel"
         private const val RELEASE_ALARM_REQUEST_CODE = 9001
+        // typeAllMask + flagRetrieveInteractiveWindows on the service makes
+        // TYPE_WINDOWS_CHANGED arrive with packageName=null. Stringifying
+        // null gives "null", which isn't in any whitelist or essential set,
+        // so unfiltered processing would press Home on every window animation.
+        private const val FOREGROUND_EVENT_MASK =
+            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or
+                AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
     }
 
     private var focusModeData: ManualFocusModeData? = null
@@ -163,14 +170,15 @@ class FocusModeBlocker : BaseBlocker() {
     }
 
     fun doFocusModeCheck(event: AccessibilityEvent?) {
-        val packageName = event?.packageName.toString()
+        if (event == null || (event.eventType and FOREGROUND_EVENT_MASK) == 0) return
+        val packageName = event.packageName?.toString() ?: return
         if (lastPackage == packageName) return
         // System-signed overlays (Pixel Extreme Battery Saver "Use anyway?",
         // permission dialogs, package installer) briefly bring a non-app
         // package to the foreground on top of the real app. Pressing Home
         // would dismiss the dialog before the user can answer. Skip without
         // updating lastPackage so the underlying app's re-show still runs.
-        if (event != null && SystemOverlayDetector.isSystemOverlay(service, event)) return
+        if (SystemOverlayDetector.isSystemOverlay(service, event)) return
         lastPackage = packageName
 
         if (pruneExpiredAutoFocusResumes()) {
