@@ -62,6 +62,9 @@ class ReducersFragment : Fragment() {
         view.findViewById<MaterialCardView>(R.id.card_logged_intents)
             .setOnClickListener(open(neth.iecal.curbox.ui.fragments.main.reducers.analytics.IntentsLogFragment.FRAGMENT_ID))
 
+        view.findViewById<MaterialCardView>(R.id.card_blocked_apps_log)
+            .setOnClickListener(open(neth.iecal.curbox.ui.fragments.main.reducers.analytics.BlockedAppsLogFragment.FRAGMENT_ID))
+
         return view
     }
 }

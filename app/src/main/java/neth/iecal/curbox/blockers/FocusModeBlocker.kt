@@ -49,6 +49,7 @@ class FocusModeBlocker : BaseBlocker() {
         private const val AUTO_FOCUS_NOTIFICATION_ID = 2001
         private const val AUTO_FOCUS_CHANNEL_ID = "AutoFocusChannel"
         private const val RELEASE_ALARM_REQUEST_CODE = 9001
+        private const val BLOCKED_LOG_MAX_ENTRIES = 100
         // typeAllMask + flagRetrieveInteractiveWindows on the service makes
         // TYPE_WINDOWS_CHANGED arrive with packageName=null. Stringifying
         // null gives "null", which isn't in any whitelist or essential set,
@@ -203,6 +204,7 @@ class FocusModeBlocker : BaseBlocker() {
             ).show()
             service.pressHome()
             lastPackage = ""
+            logBlockedApp(blockedPackage, group)
         }
 
         if (focusModeData != null) {
@@ -266,6 +268,19 @@ class FocusModeBlocker : BaseBlocker() {
                 pendingExitPauseMs.clear()
                 cancelReleaseAlarm()
             }
+        }
+    }
+
+    private fun logBlockedApp(blockedPackage: String, group: AutoFocusGroup) {
+        val entry = neth.iecal.curbox.data.db.BlockedAppLogEntity(
+            timestamp = System.currentTimeMillis(),
+            packageName = blockedPackage,
+            groupId = group.groupId,
+            groupName = group.groupName
+        )
+        CoroutineScope(Dispatchers.IO).launch {
+            val dao = neth.iecal.curbox.data.db.AppDatabase.getInstance(service).blockedAppLogDao()
+            dao.insertAndPrune(entry, BLOCKED_LOG_MAX_ENTRIES)
         }
     }
 
