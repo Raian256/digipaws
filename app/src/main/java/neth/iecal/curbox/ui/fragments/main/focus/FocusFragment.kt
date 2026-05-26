@@ -73,6 +73,7 @@ class FocusFragment : Fragment() {
         lastBoundAutoFocusGroupId = group.groupId
         if (!group.exitable) {
             binding.btnExitAutoFocus.visibility = View.GONE
+            binding.tvExitPendingTime.visibility = View.GONE
             return
         }
         binding.btnExitAutoFocus.visibility = View.VISIBLE
@@ -82,11 +83,16 @@ class FocusFragment : Fragment() {
             binding.btnExitAutoFocus.isEnabled = false
             binding.btnExitAutoFocus.text = getString(R.string.exit_cooldown_pending_button)
             binding.btnExitAutoFocus.setOnClickListener(null)
+            val timeFmt = android.text.format.DateFormat.getTimeFormat(requireContext())
+            binding.tvExitPendingTime.text =
+                getString(R.string.exit_cooldown_eta, timeFmt.format(java.util.Date(cooldownEnd)))
+            binding.tvExitPendingTime.visibility = View.VISIBLE
             scheduleAutoFocusButtonRefresh(group, cooldownEnd - System.currentTimeMillis())
         } else {
             if (cooldownEnd != 0L) {
                 cooldownPrefs().edit().remove(cooldownKey(group.groupId)).apply()
             }
+            binding.tvExitPendingTime.visibility = View.GONE
             binding.btnExitAutoFocus.isEnabled = true
             binding.btnExitAutoFocus.text = getString(R.string.stop_auto_focus)
             binding.btnExitAutoFocus.setOnClickListener {

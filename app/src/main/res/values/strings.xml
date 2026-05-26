@@ -311,6 +311,7 @@
     <string name="exit_auto_focus_minutes_required">Please enter a number of minutes greater than zero</string>
     <string name="exit_cooldown_already_running">Exit cooldown is already running</string>
     <string name="exit_cooldown_pending_button">Exit pending…</string>
+    <string name="exit_cooldown_eta">Exits at %1$s</string>
     <string name="stop_auto_focus">Stop Auto Focus</string>
     <string name="save_schedule">Save Schedule</string>
     <string name="track_the_number_of_short_videos">Track the number of short videos you scroll</string>
