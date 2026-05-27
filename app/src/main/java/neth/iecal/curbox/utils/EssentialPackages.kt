@@ -11,8 +11,24 @@ import android.content.Context
  *
  * Single source of truth — every blocker, suspender, and picker reads from here.
  * Add new categories (dialer, accessibility services, etc.) in one place.
+ *
+ * Users can extend this set with their own packages via Settings → Essential apps,
+ * which are passed in as [customPackages]. The defaults are NOT user-removable.
  */
-fun getEssentialPackages(context: Context): Set<String> {
+fun getEssentialPackages(
+    context: Context,
+    customPackages: Set<String> = emptySet()
+): Set<String> {
+    val essential = getDefaultEssentialPackages(context).toMutableSet()
+    essential.addAll(customPackages)
+    return essential
+}
+
+/**
+ * The non-removable, system-mandated essentials. Exposed so the management
+ * UI can display them as locked entries that the user cannot delete.
+ */
+fun getDefaultEssentialPackages(context: Context): Set<String> {
     val essential = mutableSetOf(
         "android",
         "com.android.systemui",

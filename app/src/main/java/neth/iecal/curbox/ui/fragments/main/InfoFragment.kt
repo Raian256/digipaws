@@ -17,6 +17,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.launch
 import java.io.File
 import neth.iecal.curbox.databinding.FragmentInfoBinding
+import neth.iecal.curbox.ui.activity.ManageEssentialsActivity
 import neth.iecal.curbox.utils.backup.BackupManager
 
 class InfoFragment : Fragment() {
@@ -78,6 +79,10 @@ class InfoFragment : Fragment() {
                 putExtra(Intent.EXTRA_TITLE, BackupManager.suggestedFileName())
             }
             exportPicker.launch(intent)
+        }
+
+        binding.btnManageEssentials.setOnClickListener {
+            startActivity(Intent(requireContext(), ManageEssentialsActivity::class.java))
         }
 
         binding.btnImportBackup.setOnClickListener {

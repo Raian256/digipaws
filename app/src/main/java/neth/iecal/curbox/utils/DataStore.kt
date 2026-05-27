@@ -116,4 +116,8 @@ class DataStoreManager(private val context: Context) {
     suspend fun updateAntiModificationsConfig(config: neth.iecal.curbox.data.models.AntiModificationsConfig) {
         settingsDataStore.updateData { it.copy(antiModificationsConfig = config) }
     }
+
+    suspend fun updateCustomEssentialPackages(packages: List<String>) {
+        settingsDataStore.updateData { it.copy(customEssentialPackages = packages.distinct()) }
+    }
 }

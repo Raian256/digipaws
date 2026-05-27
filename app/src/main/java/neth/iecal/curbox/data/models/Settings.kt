@@ -19,5 +19,10 @@ data class Settings(
     val mindfulMessageConfig: MindfulMessageConfig = MindfulMessageConfig(),
     val viewBlockerConfig: ViewBlockerConfig = ViewBlockerConfig(),
     val antiUninstallConfig: AntiUninstallConfig = AntiUninstallConfig(),
-    val antiModificationsConfig: AntiModificationsConfig = AntiModificationsConfig()
+    val antiModificationsConfig: AntiModificationsConfig = AntiModificationsConfig(),
+    /**
+     * User-added packages that should never be blocked, in addition to the
+     * built-in defaults (launcher, keyboard, system UI, our own app).
+     */
+    val customEssentialPackages: List<String> = listOf()
 )

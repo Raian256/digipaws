@@ -23,6 +23,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import neth.iecal.curbox.R
 import neth.iecal.curbox.databinding.ActivitySelectAppsBinding
@@ -31,6 +32,15 @@ import neth.iecal.curbox.utils.DataStoreManager
 import neth.iecal.curbox.utils.getEssentialPackages
 
 class SelectAppsActivity : AppCompatActivity() {
+
+    companion object {
+        /**
+         * Boolean extra (default `true`). When `true`, the user's custom essential
+         * packages are filtered out of the picker. The essentials-management screen
+         * sets this to `false` so the user can see their picks pre-selected.
+         */
+        const val EXTRA_HIDE_CUSTOM_ESSENTIALS = "HIDE_CUSTOM_ESSENTIALS"
+    }
 
     private lateinit var binding: ActivitySelectAppsBinding
     private lateinit var selectedAppList: HashSet<String>
@@ -75,7 +85,16 @@ class SelectAppsActivity : AppCompatActivity() {
         ignoredApps = intent.getStringArrayListExtra("IGNORED_APPS")?.toHashSet() ?: HashSet()
         // Hide essentials (launcher, keyboard, system UI, our own app) from the picker —
         // blockers refuse to act on them, so showing them would be misleading.
-        ignoredApps.addAll(getEssentialPackages(this))
+        // The user's custom essentials are also hidden by default, but the
+        // essentials-management screen overrides this so the user can see their
+        // current picks pre-selected.
+        val hideCustomEssentials = intent.getBooleanExtra(EXTRA_HIDE_CUSTOM_ESSENTIALS, true)
+        val customEssentials = if (hideCustomEssentials) {
+            runBlocking { dataStoreManager.settings.first().customEssentialPackages.toSet() }
+        } else {
+            emptySet()
+        }
+        ignoredApps.addAll(getEssentialPackages(this, customEssentials))
 
         Log.d("pre-selected-apps", selectedAppList.toString())
 

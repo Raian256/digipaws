@@ -424,4 +424,19 @@
     <string name="kill_background_audio_title">Kill background audio when blocked</string>
     <string name="kill_background_audio_subtitle">Pause the app\'s media session and dismiss its media notification, so it can\'t keep playing from the lockscreen or notification shade. Requires Notification access.</string>
     <string name="kill_background_audio_needs_listener">Notification access is needed for this. Grant it for Curbox in the next screen.</string>
+
+    <string name="essential_apps_title">Essential apps</string>
+    <string name="essential_apps_subtitle">Apps in this list are never blocked, suspended, or force-stopped.</string>
+    <string name="essential_apps_section_default">Default</string>
+    <string name="essential_apps_section_default_subtitle">Required by the system. Cannot be removed.</string>
+    <string name="essential_apps_section_custom">Your additions</string>
+    <string name="essential_apps_section_custom_subtitle">Apps you have marked as essential.</string>
+    <string name="essential_apps_custom_empty">No custom essentials yet. Tap “Add app” to add one.</string>
+    <string name="essential_apps_add">Add app</string>
+    <string name="essential_apps_remove_title">Remove from essentials?</string>
+    <string name="essential_apps_remove_message">%1$s will no longer be protected from blocking.</string>
+    <string name="essential_apps_locked_desc">Locked default essential</string>
+    <string name="essential_apps_card_title">Essential apps</string>
+    <string name="essential_apps_card_description">Choose extra apps that should never be blocked. Defaults like your launcher and keyboard are always protected.</string>
+    <string name="essential_apps_card_button">Manage essentials</string>
 </resources>

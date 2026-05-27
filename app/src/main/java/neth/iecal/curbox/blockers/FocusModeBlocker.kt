@@ -444,6 +444,11 @@ class FocusModeBlocker : BaseBlocker() {
         essentialPackages = getEssentialPackages(service)
         Log.d("essential package", essentialPackages.toString())
         CoroutineScope(Dispatchers.IO).launch {
+            service.dataStoreManager.settings.collectLatest { settings ->
+                essentialPackages = getEssentialPackages(service, settings.customEssentialPackages.toSet())
+            }
+        }
+        CoroutineScope(Dispatchers.IO).launch {
             val db = neth.iecal.curbox.data.db.AppDatabase.getInstance(service)
             val statsDao = db.focusStatsDao()
             val runningSessions = statsDao.getRunningSessions()

@@ -200,6 +200,8 @@ class AppBlocker() : BaseBlocker() {
         essentialPackages = getEssentialPackages(service)
         CoroutineScope(Dispatchers.IO).launch {
             service.dataStoreManager.settings.collectLatest { settings ->
+                // Refresh essentials so user-added custom essentials take effect immediately.
+                essentialPackages = getEssentialPackages(service, settings.customEssentialPackages.toSet())
                 // Rebuild per-package entry lists from scratch on every refresh.
                 blockedAppsList.clear()
                 timeBlockedAppsList.clear()
