@@ -155,13 +155,16 @@ class CreateAutoFocusGroupFragment : Fragment() {
                 return@setOnClickListener
             }
             
-            if (selectedApps.isEmpty()) {
+            val isBlockSelected = binding.rgBlockingType.checkedRadioButtonId == R.id.rb_block_selected
+            val blockMode = if (isBlockSelected) FocusBlockMode.BLOCK_SELECTED else FocusBlockMode.BLOCK_ALL_EXCEPT_SELECTED
+
+            // Whitelist mode (block-all-except-selected) is meaningful with no
+            // apps picked — the user is opting for an "essentials-only" focus.
+            // Blacklist mode with no apps would block nothing, so still reject.
+            if (isBlockSelected && selectedApps.isEmpty()) {
                 Toast.makeText(requireContext(), getString(R.string.please_select_at_least_one_app), Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-
-            val isBlockSelected = binding.rgBlockingType.checkedRadioButtonId == R.id.rb_block_selected
-            val blockMode = if (isBlockSelected) FocusBlockMode.BLOCK_SELECTED else FocusBlockMode.BLOCK_ALL_EXCEPT_SELECTED
             val exitable = binding.switchExitable.isChecked
             val exitCooldownMinutes = if (exitable) {
                 binding.etExitCooldown.text?.toString()?.trim()?.toIntOrNull()?.coerceAtLeast(0) ?: 0
