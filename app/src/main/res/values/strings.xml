@@ -439,4 +439,8 @@
     <string name="essential_apps_card_title">Essential apps</string>
     <string name="essential_apps_card_description">Choose extra apps that should never be blocked. Defaults like your launcher and keyboard are always protected.</string>
     <string name="essential_apps_card_button">Manage essentials</string>
+    <string name="essential_apps_locked_banner">Protected by Anti-Modifications. Unlock the protecting group to edit this list.</string>
+
+    <string name="anti_modifications_section_essentials">Essential apps list</string>
+    <string name="anti_modifications_essentials_item_label">Essential apps list (singleton)</string>
 </resources>

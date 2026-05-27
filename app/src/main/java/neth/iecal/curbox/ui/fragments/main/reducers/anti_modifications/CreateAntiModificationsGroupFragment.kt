@@ -40,6 +40,7 @@ class CreateAntiModificationsGroupFragment : Fragment() {
     private val pickedAutoFocusIds = mutableSetOf<String>()
     private val pickedKeywords = mutableSetOf<String>()
     private val pickedViewBlockerIds = mutableSetOf<String>()
+    private var pickedLockEssentials: Boolean = false
 
     private var selectedEndMillis: Long = 0L
 
@@ -87,8 +88,10 @@ class CreateAntiModificationsGroupFragment : Fragment() {
                 pickedAutoFocusIds.addAll(existing.lockedAutoFocusScheduleIds)
                 pickedKeywords.addAll(existing.lockedKeywords)
                 pickedViewBlockerIds.addAll(existing.lockedViewBlockerIds)
+                pickedLockEssentials = existing.lockEssentialAppsList
             }
             populatePickers(settings)
+            populateEssentialsSection()
             updateItemsSummary()
         }
 
@@ -161,9 +164,23 @@ class CreateAntiModificationsGroupFragment : Fragment() {
         }
     }
 
+    private fun populateEssentialsSection() {
+        binding.sectionEssentials.removeAllViews()
+        val cb = CheckBox(requireContext()).apply {
+            text = getString(R.string.anti_modifications_essentials_item_label)
+            isChecked = pickedLockEssentials
+            setOnCheckedChangeListener { _, checked ->
+                pickedLockEssentials = checked
+                updateItemsSummary()
+            }
+        }
+        binding.sectionEssentials.addView(cb)
+    }
+
     private fun updateItemsSummary() {
         val total = pickedAppPauseIds.size + pickedAutoFocusIds.size +
-            pickedKeywords.size + pickedViewBlockerIds.size
+            pickedKeywords.size + pickedViewBlockerIds.size +
+            (if (pickedLockEssentials) 1 else 0)
         binding.itemsSummary.text = getString(R.string.anti_modifications_items_count_summary, total)
     }
 
@@ -186,7 +203,8 @@ class CreateAntiModificationsGroupFragment : Fragment() {
         }
 
         val totalItems = pickedAppPauseIds.size + pickedAutoFocusIds.size +
-            pickedKeywords.size + pickedViewBlockerIds.size
+            pickedKeywords.size + pickedViewBlockerIds.size +
+            (if (pickedLockEssentials) 1 else 0)
         if (totalItems == 0) {
             MaterialAlertDialogBuilder(requireContext())
                 .setTitle(R.string.anti_modifications_title)
@@ -264,7 +282,8 @@ class CreateAntiModificationsGroupFragment : Fragment() {
                     lockedAppPauseScheduleIds = pickedAppPauseIds.toSet(),
                     lockedAutoFocusScheduleIds = pickedAutoFocusIds.toSet(),
                     lockedKeywords = pickedKeywords.toSet(),
-                    lockedViewBlockerIds = pickedViewBlockerIds.toSet()
+                    lockedViewBlockerIds = pickedViewBlockerIds.toSet(),
+                    lockEssentialAppsList = pickedLockEssentials
                 )
                 AntiModificationsUnlock.createGroup(this, group)
                 requireActivity().finish()
@@ -280,7 +299,9 @@ class CreateAntiModificationsGroupFragment : Fragment() {
                 lockedAppPauseScheduleIds = g.lockedAppPauseScheduleIds + pickedAppPauseIds,
                 lockedAutoFocusScheduleIds = g.lockedAutoFocusScheduleIds + pickedAutoFocusIds,
                 lockedKeywords = g.lockedKeywords + pickedKeywords,
-                lockedViewBlockerIds = g.lockedViewBlockerIds + pickedViewBlockerIds
+                lockedViewBlockerIds = g.lockedViewBlockerIds + pickedViewBlockerIds,
+                // Tighten only — never flip the flag off here.
+                lockEssentialAppsList = g.lockEssentialAppsList || pickedLockEssentials
             )
         }
         requireActivity().finish()

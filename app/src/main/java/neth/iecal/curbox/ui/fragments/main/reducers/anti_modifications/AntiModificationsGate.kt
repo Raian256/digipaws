@@ -34,6 +34,9 @@ object AntiModificationsGate {
     fun isViewBlockerLocked(config: AntiModificationsConfig, id: String) =
         config.isViewBlockerLocked(id)
 
+    fun isEssentialAppsListLocked(config: AntiModificationsConfig) =
+        config.isEssentialAppsListLocked()
+
     fun hasAnyLockedKeyword(config: AntiModificationsConfig) =
         config.hasAnyLockedKeyword()
 

@@ -32,6 +32,7 @@ class AntiModificationsGroupDetailsFragment : Fragment() {
     companion object {
         const val FRAGMENT_ID = "anti_modifications_group_details"
         const val ARG_GROUP_ID = "group_id"
+        private const val ESSENTIALS_PSEUDO_ID = "__essentials__"
     }
 
     private var _binding: FragmentAntiModificationsGroupDetailsBinding? = null
@@ -189,6 +190,15 @@ class AntiModificationsGroupDetailsFragment : Fragment() {
             AntiModificationsUnlock.attempt(this, g) { it.copy(
                 lockedViewBlockerIds = it.lockedViewBlockerIds - id
             ) }
+        }
+
+        // Essential apps list (singleton): show one row when locked.
+        renderItemSection(
+            binding.sectionEssentials,
+            lookup = mapOf(ESSENTIALS_PSEUDO_ID to getString(R.string.anti_modifications_essentials_item_label)),
+            ids = if (g.lockEssentialAppsList) setOf(ESSENTIALS_PSEUDO_ID) else emptySet()
+        ) { _ ->
+            AntiModificationsUnlock.attempt(this, g) { it.copy(lockEssentialAppsList = false) }
         }
     }
 

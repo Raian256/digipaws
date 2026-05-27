@@ -25,6 +25,7 @@ data class AntiModificationsConfig(
     fun isAutoFocusLocked(id: String) = groups.any { id in it.lockedAutoFocusScheduleIds }
     fun isKeywordLocked(keyword: String) = groups.any { keyword in it.lockedKeywords }
     fun isViewBlockerLocked(id: String) = groups.any { id in it.lockedViewBlockerIds }
+    fun isEssentialAppsListLocked() = groups.any { it.lockEssentialAppsList }
 
     // Whole-feature gates: if any item in the domain is locked by any group,
     // the corresponding master toggle must refuse "off" — otherwise disabling
@@ -58,7 +59,12 @@ data class AntiModificationsGroup(
     val lockedAppPauseScheduleIds: Set<String> = emptySet(),
     val lockedAutoFocusScheduleIds: Set<String> = emptySet(),
     val lockedKeywords: Set<String> = emptySet(),
-    val lockedViewBlockerIds: Set<String> = emptySet()
+    val lockedViewBlockerIds: Set<String> = emptySet(),
+    /**
+     * The Essential apps list is a singleton, not a per-item collection, so
+     * it's modelled as a single flag instead of a set.
+     */
+    val lockEssentialAppsList: Boolean = false
 ) {
     fun isPasswordMode() = mode == Constants.ANTI_UNINSTALL_PASSWORD_MODE
     fun isTimedMode() = mode == Constants.ANTI_UNINSTALL_TIMED_MODE
@@ -68,5 +74,6 @@ data class AntiModificationsGroup(
         lockedAppPauseScheduleIds.size +
             lockedAutoFocusScheduleIds.size +
             lockedKeywords.size +
-            lockedViewBlockerIds.size
+            lockedViewBlockerIds.size +
+            (if (lockEssentialAppsList) 1 else 0)
 }
