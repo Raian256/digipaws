@@ -1,0 +1,96 @@
+name: Build Debug APK
+
+# Builds the F-Droid debug variant on every push and publishes it as a
+# GitHub pre-release, so anyone can grab a working, installable APK without
+# setting up an Android dev environment.
+
+on:
+  push:
+    branches:
+      - "**"
+    # Don't rebuild for doc-only / metadata-only changes.
+    paths-ignore:
+      - "**.md"
+      - "fastlane/**"
+      - ".github/FUNDING.yml"
+  workflow_dispatch: {}
+
+# Allow this workflow to create releases and upload assets.
+permissions:
+  contents: write
+
+# A newer push on the same branch cancels the in-progress build for it.
+concurrency:
+  group: debug-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Assemble & publish fdroidDebug
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Give permission to executable
+        run: chmod +x gradlew
+
+      - name: Assemble fdroidDebug APK
+        run: ./gradlew :app:assembleFdroidDebug --stacktrace
+
+      - name: Locate APK
+        id: apk
+        run: |
+          apk="$(find app/build/outputs/apk/fdroid/debug -name '*.apk' | head -n1)"
+          if [ -z "$apk" ]; then
+            echo "No APK was produced under app/build/outputs/apk/fdroid/debug" >&2
+            exit 1
+          fi
+          echo "path=$apk" >> "$GITHUB_OUTPUT"
+          echo "Found APK: $apk"
+
+      # Best-effort version string for nicer release titles; falls back gracefully.
+      - name: Read version name
+        id: version
+        run: |
+          ver="$(grep -aoE 'versionName[[:space:]]*=?[[:space:]]*\"[^\"]+\"' app/build.gradle.kts \
+                 | head -n1 | grep -aoE '\"[^\"]+\"' | tr -d '\"' || true)"
+          [ -z "$ver" ] && ver="dev"
+          echo "name=$ver" >> "$GITHUB_OUTPUT"
+
+      - name: Upload APK as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: digipaws-fdroid-debug
+          path: ${{ steps.apk.outputs.path }}
+          if-no-files-found: error
+
+      - name: Publish pre-release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: debug-${{ steps.version.outputs.name }}-${{ github.run_number }}-${{ github.sha }}
+          name: "Debug build ${{ steps.version.outputs.name }} (#${{ github.run_number }})"
+          prerelease: true
+          body: |
+            Automated **debug** build of the F-Droid variant (`:app:assembleFdroidDebug`).
+
+            - Branch: `${{ github.ref_name }}`
+            - Commit: ${{ github.sha }}
+            - Built: ${{ github.event.head_commit.timestamp }}
+
+            > ⚠️ This is an unsigned-for-release **debug** APK signed with the standard
+            > Android debug key. It is meant for testing only — not the Play/F-Droid release.
+            > You may need to uninstall a store-installed copy first, since the signing key differs.
+          files: ${{ steps.apk.outputs.path }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
