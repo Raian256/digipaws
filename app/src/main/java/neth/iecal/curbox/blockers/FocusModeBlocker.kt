@@ -187,7 +187,10 @@ class FocusModeBlocker : BaseBlocker() {
         }
 
         fun performBlock() {
-            service.pressHome()
+            // Back-then-Home so a blocked app opened from another (unblocked)
+            // app gets popped off that app's task instead of being left on top
+            // of it. See BaseBlockingService.pressBackThenHome.
+            service.pressBackThenHome()
             lastPackage = ""
 //            Toast.makeText(service, service.getString(R.string.this_app_is_currently_under_focus), Toast.LENGTH_LONG).show()
         }
@@ -202,7 +205,7 @@ class FocusModeBlocker : BaseBlocker() {
                 ),
                 Toast.LENGTH_LONG
             ).show()
-            service.pressHome()
+            service.pressBackThenHome()
             lastPackage = ""
             logBlockedApp(blockedPackage, group)
         }

@@ -452,7 +452,10 @@ class AppBlocker() : BaseBlocker() {
 
     private fun showWarningScreen(packageName: String) {
         notificationManager.stopTimer()
-        service.pressHome()
+        // Back-then-Home: if this blocked app was opened from another (unblocked)
+        // app it sits on top of that app's task; a plain Home would leave it
+        // there and re-trap the user when they return. Back pops it off first.
+        service.pressBackThenHome()
         lastPackage = ""
 
         // Silence any background audio session up-front; press-home + warning
