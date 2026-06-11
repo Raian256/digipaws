@@ -81,6 +81,10 @@ class DataStoreManager(private val context: Context) {
         settingsDataStore.updateData { it.copy(activeManualFocusGroupId = Pair(null, 0)) }
     }
 
+    suspend fun updateBlockGeofencedWhenLocationUnavailable(value: Boolean) {
+        settingsDataStore.updateData { it.copy(blockGeofencedWhenLocationUnavailable = value) }
+    }
+
     suspend fun updateReelBlockerConfig(config: neth.iecal.curbox.data.models.ReelBlocker) {
         settingsDataStore.updateData { it.copy(reelBlockerConfig = config) }
     }

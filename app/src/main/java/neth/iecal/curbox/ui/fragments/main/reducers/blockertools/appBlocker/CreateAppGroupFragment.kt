@@ -103,6 +103,7 @@ class CreateAppGroupFragment : Fragment() {
                             viewModel.currentTimeConfig = Gson().fromJson(group.setting, AppTimeConfig::class.java)
                         }
                         viewModel.warningScrnConfig = group.warningScreenConfig
+                        viewModel.geoFenceConfig = group.geoFence
                         binding.switchAutoAddNewApps.isChecked = group.autoAddNewApps
                         binding.switchKillBackgroundAudio.isChecked = group.killBackgroundAudio
 
@@ -147,6 +148,10 @@ class CreateAppGroupFragment : Fragment() {
                 .add(R.id.fragment_holder, configFragment)
                 .addToBackStack(null)
                 .commit()
+        }
+
+        binding.configureLocation.setOnClickListener {
+            GeoFenceSettingsFragment().show(parentFragmentManager, GeoFenceSettingsFragment.FRAGMENT_ID)
         }
 
         parentFragmentManager.setFragmentResultListener("result_warning_config", viewLifecycleOwner) { _, bundle ->
@@ -216,6 +221,7 @@ class CreateAppGroupFragment : Fragment() {
             warningScreenConfig = viewModel.warningScrnConfig,
             autoAddNewApps = binding.switchAutoAddNewApps.isChecked,
             killBackgroundAudio = binding.switchKillBackgroundAudio.isChecked,
+            geoFence = viewModel.geoFenceConfig,
         )
 
         if (isEditingRecord && targetExistingGroup != null) {

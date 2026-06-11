@@ -1,6 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Curbox</string>
+
+    <!-- Geofence (location-based) activation condition for app-block groups -->
+    <string name="configure_location_activation">Location Activation</string>
+    <string name="location_activation">Location Activation</string>
+    <string name="location_activation_enable_title">Only block at a location</string>
+    <string name="location_activation_enable_subtitle">Activate this group based on where the device is. Off means it always applies.</string>
+    <string name="location_activation_when">Activate this group when the device is</string>
+    <string name="location_activation_inside">Inside the radius</string>
+    <string name="location_activation_outside">Outside the radius</string>
+    <string name="location_activation_center_point">Center point</string>
+    <string name="location_activation_use_current">Use current location</string>
+    <string name="location_activation_latitude">Latitude</string>
+    <string name="location_activation_longitude">Longitude</string>
+    <string name="location_activation_radius">Radius</string>
+    <string name="location_activation_radius_suffix">m</string>
+    <string name="location_activation_locating">Getting current location…</string>
+    <string name="location_activation_captured">Captured: %1$.5f, %2$.5f</string>
+    <string name="location_activation_permission_denied">Location permission is required to capture your current position.</string>
+    <string name="location_activation_invalid_coords">Enter a valid latitude (-90 to 90) and longitude (-180 to 180).</string>
+    <string name="location_activation_invalid_radius">Enter a radius greater than 0 metres.</string>
+    <string name="location_activation_background_hint">For the geofence to work while the app runs in the background, set location access to \"Allow all the time\".</string>
+
+    <!-- Global geofence fallback when location is unavailable -->
+    <string name="location_unavailable_block_title">Block when location is unavailable</string>
+    <string name="location_unavailable_block_subtitle">When the device location can\'t be read, keep geofenced groups blocking instead of letting them through.</string>
+    <string name="anti_modifications_section_geofence_failmode">Location-unavailable fallback</string>
+    <string name="anti_modifications_geofence_failmode_item_label">Block-when-location-unavailable setting</string>
     <string name="focus_mode">Focus Mode</string>
     <string name="add">Add</string>
     <string name="save">Save</string>

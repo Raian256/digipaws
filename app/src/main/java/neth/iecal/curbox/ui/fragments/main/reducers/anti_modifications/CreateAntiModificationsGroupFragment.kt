@@ -41,6 +41,7 @@ class CreateAntiModificationsGroupFragment : Fragment() {
     private val pickedKeywords = mutableSetOf<String>()
     private val pickedViewBlockerIds = mutableSetOf<String>()
     private var pickedLockEssentials: Boolean = false
+    private var pickedLockGeofenceFailMode: Boolean = false
 
     private var selectedEndMillis: Long = 0L
 
@@ -89,9 +90,11 @@ class CreateAntiModificationsGroupFragment : Fragment() {
                 pickedKeywords.addAll(existing.lockedKeywords)
                 pickedViewBlockerIds.addAll(existing.lockedViewBlockerIds)
                 pickedLockEssentials = existing.lockEssentialAppsList
+                pickedLockGeofenceFailMode = existing.lockGeofenceFailMode
             }
             populatePickers(settings)
             populateEssentialsSection()
+            populateGeofenceFailModeSection()
             updateItemsSummary()
         }
 
@@ -177,10 +180,24 @@ class CreateAntiModificationsGroupFragment : Fragment() {
         binding.sectionEssentials.addView(cb)
     }
 
+    private fun populateGeofenceFailModeSection() {
+        binding.sectionGeofenceFailmode.removeAllViews()
+        val cb = CheckBox(requireContext()).apply {
+            text = getString(R.string.anti_modifications_geofence_failmode_item_label)
+            isChecked = pickedLockGeofenceFailMode
+            setOnCheckedChangeListener { _, checked ->
+                pickedLockGeofenceFailMode = checked
+                updateItemsSummary()
+            }
+        }
+        binding.sectionGeofenceFailmode.addView(cb)
+    }
+
     private fun updateItemsSummary() {
         val total = pickedAppPauseIds.size + pickedAutoFocusIds.size +
             pickedKeywords.size + pickedViewBlockerIds.size +
-            (if (pickedLockEssentials) 1 else 0)
+            (if (pickedLockEssentials) 1 else 0) +
+            (if (pickedLockGeofenceFailMode) 1 else 0)
         binding.itemsSummary.text = getString(R.string.anti_modifications_items_count_summary, total)
     }
 
@@ -204,7 +221,8 @@ class CreateAntiModificationsGroupFragment : Fragment() {
 
         val totalItems = pickedAppPauseIds.size + pickedAutoFocusIds.size +
             pickedKeywords.size + pickedViewBlockerIds.size +
-            (if (pickedLockEssentials) 1 else 0)
+            (if (pickedLockEssentials) 1 else 0) +
+            (if (pickedLockGeofenceFailMode) 1 else 0)
         if (totalItems == 0) {
             MaterialAlertDialogBuilder(requireContext())
                 .setTitle(R.string.anti_modifications_title)
@@ -283,7 +301,8 @@ class CreateAntiModificationsGroupFragment : Fragment() {
                     lockedAutoFocusScheduleIds = pickedAutoFocusIds.toSet(),
                     lockedKeywords = pickedKeywords.toSet(),
                     lockedViewBlockerIds = pickedViewBlockerIds.toSet(),
-                    lockEssentialAppsList = pickedLockEssentials
+                    lockEssentialAppsList = pickedLockEssentials,
+                    lockGeofenceFailMode = pickedLockGeofenceFailMode
                 )
                 AntiModificationsUnlock.createGroup(this, group)
                 requireActivity().finish()
@@ -301,7 +320,8 @@ class CreateAntiModificationsGroupFragment : Fragment() {
                 lockedKeywords = g.lockedKeywords + pickedKeywords,
                 lockedViewBlockerIds = g.lockedViewBlockerIds + pickedViewBlockerIds,
                 // Tighten only — never flip the flag off here.
-                lockEssentialAppsList = g.lockEssentialAppsList || pickedLockEssentials
+                lockEssentialAppsList = g.lockEssentialAppsList || pickedLockEssentials,
+                lockGeofenceFailMode = g.lockGeofenceFailMode || pickedLockGeofenceFailMode
             )
         }
         requireActivity().finish()

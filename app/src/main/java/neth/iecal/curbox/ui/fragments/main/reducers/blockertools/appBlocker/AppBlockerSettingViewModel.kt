@@ -16,12 +16,14 @@ import neth.iecal.curbox.data.models.AppBlockerWarningScreenConfig
 import neth.iecal.curbox.data.models.AppGroup
 import neth.iecal.curbox.data.models.AppTimeConfig
 import neth.iecal.curbox.data.models.AppUsageConfig
+import neth.iecal.curbox.data.models.GeoFenceConfig
 import neth.iecal.curbox.utils.DataStoreManager
 
 class AppBlockerSettingViewModel(application: Application) : AndroidViewModel(application) {
     var currentUsageConfig: AppUsageConfig = AppUsageConfig()
     var currentTimeConfig: AppTimeConfig = AppTimeConfig()
     var warningScrnConfig: AppBlockerWarningScreenConfig = AppBlockerWarningScreenConfig()
+    var geoFenceConfig: GeoFenceConfig = GeoFenceConfig()
 
     private val dataStoreManager = DataStoreManager(application)
 
@@ -73,6 +75,13 @@ class AppBlockerSettingViewModel(application: Application) : AndroidViewModel(ap
             val updatedGroups = currentSettings.blockedAppGroups.toMutableList()
             updatedGroups.removeAll { it.id == groupId }
             updateGroups(updatedGroups)
+        }
+    }
+
+    fun updateBlockGeofencedWhenLocationUnavailable(value: Boolean) {
+        viewModelScope.launch {
+            dataStoreManager.updateBlockGeofencedWhenLocationUnavailable(value)
+            requestAppBlockerRefresh()
         }
     }
 

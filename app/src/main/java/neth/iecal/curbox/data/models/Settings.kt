@@ -24,5 +24,15 @@ data class Settings(
      * User-added packages that should never be blocked, in addition to the
      * built-in defaults (launcher, keyboard, system UI, our own app).
      */
-    val customEssentialPackages: List<String> = listOf()
+    val customEssentialPackages: List<String> = listOf(),
+    /**
+     * Global fallback for geofenced app-block groups when the device location
+     * is unknown (no fix yet, location off, or permission missing).
+     *  - false (default): fail open — geofenced groups don't block until the
+     *    inside/outside condition can be confirmed.
+     *  - true: fail closed — geofenced groups stay active while location is
+     *    unavailable, so a block can't be dodged by denying location.
+     * Lockable via an Anti-Modifications group.
+     */
+    val blockGeofencedWhenLocationUnavailable: Boolean = false
 )

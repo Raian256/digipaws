@@ -16,6 +16,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.google.android.material.materialswitch.MaterialSwitch
 import com.google.android.material.switchmaterial.SwitchMaterial
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -37,6 +38,10 @@ class AppBlockerGroupsFragment : Fragment() {
     private lateinit var tvEmptyState: TextView
     private lateinit var fabAddGroup: FloatingActionButton
     private lateinit var toolbar: MaterialToolbar
+    private lateinit var switchLocationFallback: MaterialSwitch
+
+    /** True while the global location-fallback toggle is held by an Anti-Modifications group. */
+    private var locationFallbackLocked = false
 
     private val viewModel: AppBlockerSettingViewModel by activityViewModels()
     private val dataStoreManager by lazy { DataStoreManager(requireContext().applicationContext) }
@@ -52,6 +57,7 @@ class AppBlockerGroupsFragment : Fragment() {
         tvEmptyState = view.findViewById(R.id.tv_empty_state)
         fabAddGroup = view.findViewById(R.id.fab_add_group)
         toolbar = view.findViewById(R.id.toolbar)
+        switchLocationFallback = view.findViewById(R.id.switch_location_fallback)
 
         toolbar.setNavigationOnClickListener {
             requireActivity().finish()
@@ -87,13 +93,38 @@ class AppBlockerGroupsFragment : Fragment() {
             }
         }
 
+        // Global "block when location unavailable" toggle. Turning it off is
+        // refused while an Anti-Modifications group holds it, mirroring the
+        // per-group active switch above.
+        rebindLocationFallbackListener()
+
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 dataStoreManager.settings.collectLatest { settings ->
                     antiMods = settings.antiModificationsConfig
+                    locationFallbackLocked =
+                        AntiModificationsGate.isGeofenceFailModeLocked(antiMods)
+                    // Reflect state without re-triggering the listener.
+                    switchLocationFallback.setOnCheckedChangeListener(null)
+                    switchLocationFallback.isChecked = settings.blockGeofencedWhenLocationUnavailable
+                    switchLocationFallback.alpha = if (locationFallbackLocked) 0.5f else 1f
+                    rebindLocationFallbackListener()
                     rvGroups.adapter?.notifyDataSetChanged()
                 }
             }
+        }
+    }
+
+    private fun rebindLocationFallbackListener() {
+        switchLocationFallback.setOnCheckedChangeListener { buttonView, isChecked ->
+            if (locationFallbackLocked) {
+                buttonView.setOnCheckedChangeListener(null)
+                buttonView.isChecked = !isChecked
+                AntiModificationsGate.refuseWithSnackbar(buttonView)
+                rebindLocationFallbackListener()
+                return@setOnCheckedChangeListener
+            }
+            viewModel.updateBlockGeofencedWhenLocationUnavailable(isChecked)
         }
     }
 

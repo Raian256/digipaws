@@ -23,10 +23,13 @@ import neth.iecal.curbox.data.models.AppBlockerWarningScreenConfig
 import neth.iecal.curbox.data.models.AppBlockingType
 import neth.iecal.curbox.data.models.AppTimeConfig
 import neth.iecal.curbox.data.models.AppUsageConfig
+import neth.iecal.curbox.data.models.GeoFenceConfig
+import neth.iecal.curbox.data.models.GeoFenceMode
 import neth.iecal.curbox.services.BaseBlockingService
 import neth.iecal.curbox.services.MediaNotifSilencer
 import neth.iecal.curbox.ui.activity.WarningActivity
 import neth.iecal.curbox.utils.AppSuspendHelper
+import neth.iecal.curbox.utils.LocationProvider
 import neth.iecal.curbox.utils.ShizukuRunner
 import neth.iecal.curbox.utils.SystemOverlayDetector
 import neth.iecal.curbox.utils.TimeTools
@@ -68,8 +71,8 @@ class AppBlocker() : BaseBlocker() {
      * package-keyed map. Now every group's rule is evaluated, and the
      * strictest one wins.
      */
-    private data class UsageEntry(val config: AppUsageConfig, val warning: AppBlockerWarningScreenConfig, val killBackgroundAudio: Boolean)
-    private data class TimeEntry(val config: AppTimeConfig, val warning: AppBlockerWarningScreenConfig, val killBackgroundAudio: Boolean)
+    private data class UsageEntry(val config: AppUsageConfig, val warning: AppBlockerWarningScreenConfig, val killBackgroundAudio: Boolean, val geoFence: GeoFenceConfig)
+    private data class TimeEntry(val config: AppTimeConfig, val warning: AppBlockerWarningScreenConfig, val killBackgroundAudio: Boolean, val geoFence: GeoFenceConfig)
 
     private var blockedAppsList = HashMap<String, MutableList<UsageEntry>>()
     private var timeBlockedAppsList = HashMap<String, MutableList<TimeEntry>>()
@@ -85,6 +88,21 @@ class AppBlocker() : BaseBlocker() {
     private var lastPackage = ""
     private var essentialPackages: Set<String> = emptySet()
     private lateinit var service: BaseBlockingService
+
+    /**
+     * Supplies the device location used to evaluate geofenced groups. Updates
+     * are only requested while at least one active group opts into a geofence,
+     * so location-agnostic setups never touch the GPS stack.
+     */
+    private lateinit var locationProvider: LocationProvider
+
+    /**
+     * Global fail-open vs fail-closed choice for geofenced groups when no
+     * location fix is available. Mirrors
+     * [neth.iecal.curbox.data.models.Settings.blockGeofencedWhenLocationUnavailable]
+     * and is refreshed alongside the group lists.
+     */
+    private var blockWhenLocationUnavailable = false
 
 
     // responsible to trigger a recheck for what app user is currently using even when no event is received. Used in putting the usage recheck logic into
@@ -110,6 +128,16 @@ class AppBlocker() : BaseBlocker() {
 
         lastPackage = packageName
 
+        evaluatePackage(packageName)
+    }
+
+    /**
+     * Core block decision for [packageName], factored out so it can be driven
+     * both by accessibility events and by a fresh location fix (a geofence
+     * boundary can be crossed while the user stares at an otherwise static
+     * screen, which produces no accessibility event).
+     */
+    private fun evaluatePackage(packageName: String) {
         // Check Cooldown
         if (cooldownAppsList.containsKey(packageName)) {
             if (cooldownAppsList[packageName]!! < System.currentTimeMillis()) {
@@ -123,7 +151,7 @@ class AppBlocker() : BaseBlocker() {
         // Check Time Blocks — app blocked if currently outside ANY active
         // group's allowed window. Earliest allowed-window end among matching
         // groups drives the next forced refresh.
-        val timeEntries = timeBlockedAppsList[packageName]
+        val timeEntries = timeBlockedAppsList[packageName]?.filter { isActiveByLocation(it.geoFence) }
         if (!timeEntries.isNullOrEmpty()) {
             var earliestEnd: Long = Long.MAX_VALUE
             for (entry in timeEntries) {
@@ -139,12 +167,12 @@ class AppBlocker() : BaseBlocker() {
                 setUpForcedRefreshChecker(packageName, earliestEnd)
             }
         }
-        Log.d("checking","checking ${event.packageName}")
+        Log.d("checking","checking $packageName")
 
         // Check Usage Blocks — app blocked if ANY active group's daily limit
         // is exceeded. Notification timer + recheck use the minimum remaining
         // time across all covering groups.
-        val usageEntries = blockedAppsList[packageName]
+        val usageEntries = blockedAppsList[packageName]?.filter { isActiveByLocation(it.geoFence) }
         if (!usageEntries.isNullOrEmpty()) {
             val currentUsage = usageStats.getForegroundStatsByRelativeDay(0)
                 .firstOrNull { it.packageName == packageName }?.totalTime ?: 0L
@@ -189,6 +217,7 @@ class AppBlocker() : BaseBlocker() {
         notificationManager.release()
         handler.removeCallbacksAndMessages(null)
         activeRunnables.clear()
+        if (::locationProvider.isInitialized) locationProvider.stop()
     }
 
     fun setupAppBlocker(service: BaseBlockingService) {
@@ -196,12 +225,17 @@ class AppBlocker() : BaseBlocker() {
         notificationManager = TimerNotification(service)
         prefs = service.getSharedPreferences("app_blocker_prefs", Context.MODE_PRIVATE)
         loadPersistedData()
+        if (!::locationProvider.isInitialized) {
+            locationProvider = LocationProvider(service)
+            locationProvider.onUpdate = { onLocationChanged() }
+        }
         usageStats = UsageStatsHelper(service)
         essentialPackages = getEssentialPackages(service)
         CoroutineScope(Dispatchers.IO).launch {
             service.dataStoreManager.settings.collectLatest { settings ->
                 // Refresh essentials so user-added custom essentials take effect immediately.
                 essentialPackages = getEssentialPackages(service, settings.customEssentialPackages.toSet())
+                blockWhenLocationUnavailable = settings.blockGeofencedWhenLocationUnavailable
                 // Rebuild per-package entry lists from scratch on every refresh.
                 blockedAppsList.clear()
                 timeBlockedAppsList.clear()
@@ -210,19 +244,23 @@ class AppBlocker() : BaseBlocker() {
                     if (!group.isActive) return@forEach
                     if (group.blockingType == AppBlockingType.Usage) {
                         val appUsageConfig = Gson().fromJson(group.setting, AppUsageConfig::class.java)
-                        val entry = UsageEntry(appUsageConfig, group.warningScreenConfig, group.killBackgroundAudio)
+                        val entry = UsageEntry(appUsageConfig, group.warningScreenConfig, group.killBackgroundAudio, group.geoFence)
                         group.selectedPackages.forEach { pkg ->
                             blockedAppsList.getOrPut(pkg) { mutableListOf() }.add(entry)
                         }
                     } else {
                         val appTimedConfig = Gson().fromJson(group.setting, AppTimeConfig::class.java)
-                        val entry = TimeEntry(appTimedConfig, group.warningScreenConfig, group.killBackgroundAudio)
+                        val entry = TimeEntry(appTimedConfig, group.warningScreenConfig, group.killBackgroundAudio, group.geoFence)
                         group.selectedPackages.forEach { pkg ->
                             timeBlockedAppsList.getOrPut(pkg) { mutableListOf() }.add(entry)
                         }
                     }
                 }
                 Log.d("loaded blocked apps",blockedAppsList.toString())
+
+                // Only spin up location updates while a geofence is actually in
+                // use; otherwise keep the GPS stack untouched.
+                if (anyGeoFenceActive()) locationProvider.start() else locationProvider.stop()
 
                 // Drop silences for packages whose audio-killing groups went away.
                 val stillCovered = audioSilencedPackages.filter { hasAudioKilling(it) }.toSet()
@@ -286,6 +324,47 @@ class AppBlocker() : BaseBlocker() {
         }
     }
 
+    /**
+     * Whether a group with [geo] should currently be treated as active given
+     * the latest known location.
+     *
+     *  - Disabled gate  -> always active (legacy / location-agnostic groups).
+     *  - No fix yet      -> governed by the global
+     *                       [blockWhenLocationUnavailable] choice: fail open
+     *                       (don't block) by default, or fail closed (stay
+     *                       active) when the user opts in.
+     *  - INSIDE  mode    -> active while within [GeoFenceConfig.radiusMeters].
+     *  - OUTSIDE mode    -> active while beyond that radius.
+     */
+    private fun isActiveByLocation(geo: GeoFenceConfig): Boolean {
+        if (!geo.enabled) return true
+        val distance = locationProvider.distanceTo(geo.latitude, geo.longitude)
+            ?: return blockWhenLocationUnavailable
+        val inside = distance <= geo.radiusMeters
+        return when (geo.mode) {
+            GeoFenceMode.INSIDE -> inside
+            GeoFenceMode.OUTSIDE -> !inside
+        }
+    }
+
+    /** True if any active group covering any package opts into a geofence. */
+    private fun anyGeoFenceActive(): Boolean {
+        return blockedAppsList.values.any { list -> list.any { it.geoFence.enabled } } ||
+            timeBlockedAppsList.values.any { list -> list.any { it.geoFence.enabled } }
+    }
+
+    /**
+     * A new location fix arrived. Re-evaluate the app currently in the
+     * foreground so crossing a geofence boundary takes effect immediately,
+     * without waiting for the next accessibility event.
+     */
+    private fun onLocationChanged() {
+        val pkg = service.rootInActiveWindow?.packageName?.toString() ?: return
+        if (essentialPackages.contains(pkg)) return
+        lastPackage = "" // allow re-processing of the same package
+        evaluatePackage(pkg)
+    }
+
     private fun loadPersistedData() {
         val cooldownKeys = prefs.getStringSet("cooldown_keys", setOf()) ?: setOf()
         cooldownKeys.forEach { packageName ->
@@ -344,8 +423,8 @@ class AppBlocker() : BaseBlocker() {
      */
     private fun mergedStrictestWarning(packageName: String): AppBlockerWarningScreenConfig? {
         val warnings = buildList {
-            timeBlockedAppsList[packageName]?.forEach { add(it.warning) }
-            blockedAppsList[packageName]?.forEach { add(it.warning) }
+            timeBlockedAppsList[packageName]?.forEach { if (isActiveByLocation(it.geoFence)) add(it.warning) }
+            blockedAppsList[packageName]?.forEach { if (isActiveByLocation(it.geoFence)) add(it.warning) }
         }
         if (warnings.isEmpty()) return null
 

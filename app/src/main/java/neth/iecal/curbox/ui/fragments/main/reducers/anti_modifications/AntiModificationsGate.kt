@@ -37,6 +37,9 @@ object AntiModificationsGate {
     fun isEssentialAppsListLocked(config: AntiModificationsConfig) =
         config.isEssentialAppsListLocked()
 
+    fun isGeofenceFailModeLocked(config: AntiModificationsConfig) =
+        config.isGeofenceFailModeLocked()
+
     fun hasAnyLockedKeyword(config: AntiModificationsConfig) =
         config.hasAnyLockedKeyword()
 

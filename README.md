@@ -42,7 +42,14 @@ substantial additions and reworks beyond upstream. It is licensed under
 - **App blocker.** Block apps per user-defined group, either by a daily **usage
   limit** or by a **time schedule** (per-day intervals). Groups can auto-enroll
   newly installed apps, optionally kill the blocked app's background audio, and
-  carry their own warning-screen configuration.
+  carry their own warning-screen configuration. A group can also be gated by an
+  optional **geofence**: it only applies while the device is *inside* (or
+  *outside*) a radius around a saved point. The point is captured from the
+  current location or entered as latitude/longitude — there is no map, since the
+  app has no network access. Location is read on-device only and never leaves the
+  phone. A global option controls what geofenced groups do when the location is
+  unavailable (keep blocking vs. let through), and that option can itself be
+  locked behind an Anti-Modifications group.
 - **Focus mode.** Group-based focus sessions in two modes — *block selected
   apps* or *block everything except selected apps*. Supports manual sessions and
   **automatic scheduled** sessions (per-day intervals), optional do-not-disturb

@@ -33,6 +33,7 @@ class AntiModificationsGroupDetailsFragment : Fragment() {
         const val FRAGMENT_ID = "anti_modifications_group_details"
         const val ARG_GROUP_ID = "group_id"
         private const val ESSENTIALS_PSEUDO_ID = "__essentials__"
+        private const val GEOFENCE_FAILMODE_PSEUDO_ID = "__geofence_failmode__"
     }
 
     private var _binding: FragmentAntiModificationsGroupDetailsBinding? = null
@@ -199,6 +200,15 @@ class AntiModificationsGroupDetailsFragment : Fragment() {
             ids = if (g.lockEssentialAppsList) setOf(ESSENTIALS_PSEUDO_ID) else emptySet()
         ) { _ ->
             AntiModificationsUnlock.attempt(this, g) { it.copy(lockEssentialAppsList = false) }
+        }
+
+        // Geofence location-unavailable fallback (singleton): one row when locked.
+        renderItemSection(
+            binding.sectionGeofenceFailmode,
+            lookup = mapOf(GEOFENCE_FAILMODE_PSEUDO_ID to getString(R.string.anti_modifications_geofence_failmode_item_label)),
+            ids = if (g.lockGeofenceFailMode) setOf(GEOFENCE_FAILMODE_PSEUDO_ID) else emptySet()
+        ) { _ ->
+            AntiModificationsUnlock.attempt(this, g) { it.copy(lockGeofenceFailMode = false) }
         }
     }
 

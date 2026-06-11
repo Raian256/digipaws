@@ -11,6 +11,12 @@ data class AppGroup(
     val warningScreenConfig : AppBlockerWarningScreenConfig,
     val autoAddNewApps: Boolean = false,
     val killBackgroundAudio: Boolean = false,
+    /**
+     * Optional geolocation activation gate. When [GeoFenceConfig.enabled] is
+     * false (the default), the group is location-agnostic and behaves as it
+     * always has.
+     */
+    val geoFence: GeoFenceConfig = GeoFenceConfig(),
 )
 
 enum class AppBlockingType{
