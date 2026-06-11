@@ -6,6 +6,19 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+// Short hash of the commit the build was produced from, surfaced in the
+// in-app info screen. Falls back to "unknown" outside a git checkout.
+fun gitCommitHash(): String = try {
+    val process = ProcessBuilder("git", "rev-parse", "--short", "HEAD")
+        .directory(rootDir)
+        .redirectErrorStream(true)
+        .start()
+    process.inputStream.bufferedReader().use { it.readText() }.trim()
+        .ifEmpty { "unknown" }
+} catch (e: Exception) {
+    "unknown"
+}
+
 android {
     namespace = "neth.iecal.curbox"
     compileSdk = 34
@@ -23,6 +36,7 @@ android {
         versionCode = 50
         versionName = "5"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "GIT_COMMIT", "\"${gitCommitHash()}\"")
     }
 
     productFlavors {

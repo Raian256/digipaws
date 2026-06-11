@@ -348,6 +348,17 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
         
+        <TextView
+            android:id="@+id/tv_build_info"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:gravity="center"
+            android:textIsSelectable="true"
+            style="@style/TextAppearance.Material3.BodySmall"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            tools:text="Curbox 5-fdroid (abc1234)" />
+
         <Space
             android:layout_width="match_parent"
             android:layout_height="300dp" />

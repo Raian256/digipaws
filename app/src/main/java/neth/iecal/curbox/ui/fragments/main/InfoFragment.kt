@@ -1,5 +1,6 @@
 package neth.iecal.curbox.ui.fragments.main
 
+import neth.iecal.curbox.BuildConfig
 import neth.iecal.curbox.R
 
 import android.content.Intent
@@ -44,8 +45,17 @@ class InfoFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        
+
         setupClickListeners()
+        showBuildInfo()
+    }
+
+    private fun showBuildInfo() {
+        binding.tvBuildInfo.text = getString(
+            R.string.build_info,
+            BuildConfig.VERSION_NAME,
+            BuildConfig.GIT_COMMIT
+        )
     }
 
     private fun setupClickListeners() {

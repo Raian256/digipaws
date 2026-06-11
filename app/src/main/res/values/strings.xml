@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Curbox</string>
+    <string name="build_info">Curbox %1$s · commit %2$s</string>
 
     <!-- Geofence (location-based) activation condition for app-block groups -->
     <string name="configure_location_activation">Location Activation</string>
