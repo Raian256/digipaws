@@ -244,13 +244,13 @@ class AppBlocker() : BaseBlocker() {
                     if (!group.isActive) return@forEach
                     if (group.blockingType == AppBlockingType.Usage) {
                         val appUsageConfig = Gson().fromJson(group.setting, AppUsageConfig::class.java)
-                        val entry = UsageEntry(appUsageConfig, group.warningScreenConfig, group.killBackgroundAudio, group.geoFence)
+                        val entry = UsageEntry(appUsageConfig, group.warningScreenConfig, group.killBackgroundAudio, group.geoFence ?: GeoFenceConfig())
                         group.selectedPackages.forEach { pkg ->
                             blockedAppsList.getOrPut(pkg) { mutableListOf() }.add(entry)
                         }
                     } else {
                         val appTimedConfig = Gson().fromJson(group.setting, AppTimeConfig::class.java)
-                        val entry = TimeEntry(appTimedConfig, group.warningScreenConfig, group.killBackgroundAudio, group.geoFence)
+                        val entry = TimeEntry(appTimedConfig, group.warningScreenConfig, group.killBackgroundAudio, group.geoFence ?: GeoFenceConfig())
                         group.selectedPackages.forEach { pkg ->
                             timeBlockedAppsList.getOrPut(pkg) { mutableListOf() }.add(entry)
                         }

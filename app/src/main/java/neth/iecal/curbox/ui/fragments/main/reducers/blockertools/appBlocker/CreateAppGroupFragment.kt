@@ -103,7 +103,7 @@ class CreateAppGroupFragment : Fragment() {
                             viewModel.currentTimeConfig = Gson().fromJson(group.setting, AppTimeConfig::class.java)
                         }
                         viewModel.warningScrnConfig = group.warningScreenConfig
-                        viewModel.geoFenceConfig = group.geoFence
+                        viewModel.geoFenceConfig = group.geoFence ?: neth.iecal.curbox.data.models.GeoFenceConfig()
                         binding.switchAutoAddNewApps.isChecked = group.autoAddNewApps
                         binding.switchKillBackgroundAudio.isChecked = group.killBackgroundAudio
 

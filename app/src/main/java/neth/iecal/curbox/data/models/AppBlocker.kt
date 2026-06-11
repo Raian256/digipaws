@@ -15,8 +15,13 @@ data class AppGroup(
      * Optional geolocation activation gate. When [GeoFenceConfig.enabled] is
      * false (the default), the group is location-agnostic and behaves as it
      * always has.
+     *
+     * Nullable on purpose: groups persisted before this field existed have no
+     * `geoFence` key in their JSON, and Gson (which bypasses Kotlin
+     * constructors) leaves it null rather than applying the default. Read sites
+     * must coalesce with `?: GeoFenceConfig()`.
      */
-    val geoFence: GeoFenceConfig = GeoFenceConfig(),
+    val geoFence: GeoFenceConfig? = null,
 )
 
 enum class AppBlockingType{
