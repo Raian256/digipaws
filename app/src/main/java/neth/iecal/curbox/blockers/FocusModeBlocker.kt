@@ -44,11 +44,9 @@ class FocusModeBlocker : BaseBlocker() {
         const val INTENT_ACTION_REFRESH_FOCUS_MODE = "neth.iecal.curbox.refresh.focus_mode"
         const val INTENT_ACTION_EXIT_AUTO_FOCUS = "neth.iecal.curbox.exit.auto_focus"
         const val INTENT_ACTION_CANCEL_EXIT_AUTO_FOCUS = "neth.iecal.curbox.cancel_exit.auto_focus"
-        const val INTENT_ACTION_AUTO_FOCUS_RELEASE = "neth.iecal.curbox.auto_focus.release"
         const val INTENT_ACTION_UNSUSPEND_ALL = "neth.iecal.curbox.unsuspend_all_apps"
         private const val AUTO_FOCUS_NOTIFICATION_ID = 2001
         private const val AUTO_FOCUS_CHANNEL_ID = "AutoFocusChannel"
-        private const val RELEASE_ALARM_REQUEST_CODE = 9001
         private const val BLOCKED_LOG_MAX_ENTRIES = 100
         // typeAllMask + flagRetrieveInteractiveWindows on the service makes
         // TYPE_WINDOWS_CHANGED arrive with packageName=null. Stringifying
@@ -330,7 +328,6 @@ class FocusModeBlocker : BaseBlocker() {
             if (pendingExitTimes.isNotEmpty()) {
                 pendingExitTimes.clear()
                 pendingExitPauseMs.clear()
-                cancelReleaseAlarm()
             }
         }
     }
@@ -415,44 +412,6 @@ class FocusModeBlocker : BaseBlocker() {
         nm.notify(AUTO_FOCUS_NOTIFICATION_ID, builder.build())
     }
 
-    private fun scheduleReleaseAlarm() {
-        val nextRelease = pendingExitTimes.values.minOrNull() ?: return
-        val am = service.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
-        val intent = Intent(INTENT_ACTION_AUTO_FOCUS_RELEASE).setPackage(service.packageName)
-        val pi = PendingIntent.getBroadcast(
-            service, RELEASE_ALARM_REQUEST_CODE, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        am.cancel(pi)
-        // Best-effort wake-up only: processAutoFocusExitSchedule() applies the
-        // exit/resume from timestamps on the next event regardless. Exact alarms
-        // need SCHEDULE_EXACT_ALARM on API 31+, which we don't hold, so fall back
-        // to an inexact alarm instead of throwing and silently dropping the exit.
-        val canExact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || am.canScheduleExactAlarms()
-        try {
-            when {
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && canExact ->
-                    am.setExactAndAllowWhileIdle(android.app.AlarmManager.RTC_WAKEUP, nextRelease, pi)
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ->
-                    am.setAndAllowWhileIdle(android.app.AlarmManager.RTC_WAKEUP, nextRelease, pi)
-                else ->
-                    am.setExact(android.app.AlarmManager.RTC_WAKEUP, nextRelease, pi)
-            }
-        } catch (_: SecurityException) {
-            am.set(android.app.AlarmManager.RTC_WAKEUP, nextRelease, pi)
-        }
-    }
-
-    private fun cancelReleaseAlarm() {
-        val am = service.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
-        val intent = Intent(INTENT_ACTION_AUTO_FOCUS_RELEASE).setPackage(service.packageName)
-        val pi = PendingIntent.getBroadcast(
-            service, RELEASE_ALARM_REQUEST_CODE, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        am.cancel(pi)
-    }
-
     private fun hideAutoFocusNotification(wasForceStopped: Boolean = false, targetGroupId: String? = null) {
         autoFocusNotificationShown = false
         val nm = service.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -498,7 +457,6 @@ class FocusModeBlocker : BaseBlocker() {
             addAction(INTENT_ACTION_REFRESH_FOCUS_MODE)
             addAction(INTENT_ACTION_EXIT_AUTO_FOCUS)
             addAction(INTENT_ACTION_CANCEL_EXIT_AUTO_FOCUS)
-            addAction(INTENT_ACTION_AUTO_FOCUS_RELEASE)
             addAction(INTENT_ACTION_UNSUSPEND_ALL)
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -620,7 +578,6 @@ class FocusModeBlocker : BaseBlocker() {
                     }
                     if (anyNewlyScheduled) {
                         autoFocusNotificationShown = false
-                        scheduleReleaseAlarm()
                         if (maxScheduledMinutes > 0) {
                             android.os.Handler(android.os.Looper.getMainLooper()).post {
                                 Toast.makeText(
@@ -640,16 +597,7 @@ class FocusModeBlocker : BaseBlocker() {
                     if (pendingExitTimes.isNotEmpty()) {
                         pendingExitTimes.clear()
                         pendingExitPauseMs.clear()
-                        cancelReleaseAlarm()
                         autoFocusNotificationShown = false
-                    }
-                    lastPackage = ""
-                    updateSuspendedPackages(service)
-                }
-                INTENT_ACTION_AUTO_FOCUS_RELEASE -> {
-                    processAutoFocusExitSchedule()
-                    if (pendingExitTimes.isNotEmpty()) {
-                        scheduleReleaseAlarm()
                     }
                     lastPackage = ""
                     updateSuspendedPackages(service)
