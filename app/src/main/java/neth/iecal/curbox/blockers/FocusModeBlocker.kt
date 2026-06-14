@@ -77,16 +77,48 @@ class FocusModeBlocker : BaseBlocker() {
     private var currentlySuspendedPackages = setOf<String>()
     private var lastEvaluatedMinute = -1
 
-    private fun pruneExpiredAutoFocusResumes(): Boolean {
-        if (autoFocusResumeAt.isEmpty()) return false
+    /**
+     * Advance the exit/pause state machine purely from timestamps:
+     *  - a cooldown that has elapsed exits its group and starts the pause,
+     *  - a pause that has run its course resumes the group.
+     *
+     * This is time-driven on purpose. The release alarm is only a best-effort
+     * wake-up; the actual transitions happen here, on every accessibility event
+     * and minute tick, so a pause still applies even when the alarm never fires
+     * (exact-alarm permission denied, Doze, or the service was recreated and
+     * lost its in-memory alarm). Returns true if anything changed so callers
+     * can re-evaluate suspensions.
+     */
+    private fun processAutoFocusExitSchedule(): Boolean {
         val now = System.currentTimeMillis()
-        val expired = autoFocusResumeAt.filter { it.value <= now }.keys.toList()
-        if (expired.isEmpty()) return false
-        for (id in expired) {
-            autoFocusResumeAt.remove(id)
-            dismissedAutoFocusGroupIds.remove(id)
+        var changed = false
+
+        if (pendingExitTimes.isNotEmpty()) {
+            val ready = pendingExitTimes.filter { it.value <= now }.keys.toList()
+            for (groupId in ready) {
+                pendingExitTimes.remove(groupId)
+                dismissedAutoFocusGroupIds.add(groupId)
+                val pauseMs = pendingExitPauseMs.remove(groupId)
+                if (pauseMs != null && pauseMs > 0) {
+                    autoFocusResumeAt[groupId] = now + pauseMs
+                }
+                changed = true
+            }
+            if (ready.isNotEmpty()) {
+                hideAutoFocusNotification(wasForceStopped = true)
+            }
         }
-        return true
+
+        if (autoFocusResumeAt.isNotEmpty()) {
+            val expired = autoFocusResumeAt.filter { it.value <= now }.keys.toList()
+            for (id in expired) {
+                autoFocusResumeAt.remove(id)
+                dismissedAutoFocusGroupIds.remove(id)
+                changed = true
+            }
+        }
+
+        return changed
     }
 
     /**
@@ -118,7 +150,7 @@ class FocusModeBlocker : BaseBlocker() {
     }
 
     private fun updateSuspendedPackages(serviceContext: Context) {
-        pruneExpiredAutoFocusResumes()
+        processAutoFocusExitSchedule()
         val newSuspendedPackages = mutableSetOf<String>()
 
                 var shouldDndBeOn = false
@@ -211,7 +243,7 @@ class FocusModeBlocker : BaseBlocker() {
         if (SystemOverlayDetector.isSystemOverlay(service, event)) return
         lastPackage = packageName
 
-        if (pruneExpiredAutoFocusResumes()) {
+        if (processAutoFocusExitSchedule()) {
             updateSuspendedPackages(service)
         }
 
@@ -392,10 +424,22 @@ class FocusModeBlocker : BaseBlocker() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         am.cancel(pi)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            am.setExactAndAllowWhileIdle(android.app.AlarmManager.RTC_WAKEUP, nextRelease, pi)
-        } else {
-            am.setExact(android.app.AlarmManager.RTC_WAKEUP, nextRelease, pi)
+        // Best-effort wake-up only: processAutoFocusExitSchedule() applies the
+        // exit/resume from timestamps on the next event regardless. Exact alarms
+        // need SCHEDULE_EXACT_ALARM on API 31+, which we don't hold, so fall back
+        // to an inexact alarm instead of throwing and silently dropping the exit.
+        val canExact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || am.canScheduleExactAlarms()
+        try {
+            when {
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && canExact ->
+                    am.setExactAndAllowWhileIdle(android.app.AlarmManager.RTC_WAKEUP, nextRelease, pi)
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ->
+                    am.setAndAllowWhileIdle(android.app.AlarmManager.RTC_WAKEUP, nextRelease, pi)
+                else ->
+                    am.setExact(android.app.AlarmManager.RTC_WAKEUP, nextRelease, pi)
+            }
+        } catch (_: SecurityException) {
+            am.set(android.app.AlarmManager.RTC_WAKEUP, nextRelease, pi)
         }
     }
 
@@ -603,19 +647,7 @@ class FocusModeBlocker : BaseBlocker() {
                     updateSuspendedPackages(service)
                 }
                 INTENT_ACTION_AUTO_FOCUS_RELEASE -> {
-                    val now = System.currentTimeMillis()
-                    val ready = pendingExitTimes.filter { it.value <= now }.keys.toList()
-                    if (ready.isNotEmpty()) {
-                        for (groupId in ready) {
-                            pendingExitTimes.remove(groupId)
-                            dismissedAutoFocusGroupIds.add(groupId)
-                            val pauseMs = pendingExitPauseMs.remove(groupId)
-                            if (pauseMs != null && pauseMs > 0) {
-                                autoFocusResumeAt[groupId] = now + pauseMs
-                            }
-                        }
-                        hideAutoFocusNotification(wasForceStopped = true)
-                    }
+                    processAutoFocusExitSchedule()
                     if (pendingExitTimes.isNotEmpty()) {
                         scheduleReleaseAlarm()
                     }
