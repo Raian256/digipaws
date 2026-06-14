@@ -72,6 +72,7 @@ class FocusModeBlocker : BaseBlocker() {
     private var autoFocusNotificationShown = false
     private var essentialPackages: Set<String> = emptySet()
     private var currentActiveAutoFocusGroupId: String? = null
+    private var didReconcileAutoFocusSessions = false
 
     private var currentlySuspendedPackages = setOf<String>()
     private var lastEvaluatedMinute = -1
@@ -86,6 +87,34 @@ class FocusModeBlocker : BaseBlocker() {
             dismissedAutoFocusGroupIds.remove(id)
         }
         return true
+    }
+
+    /**
+     * Close auto-focus sessions that the DB still marks as running but which
+     * aren't inside an active interval anymore (or whose group is gone). These
+     * are left behind when the accessibility service is recreated mid-session:
+     * the in-memory [autoFocusNotificationShown] flag resets, so the normal
+     * end-of-interval close in [doFocusModeCheck] never fires and the stale
+     * session reads as "running" forever. Runs once per service start, after
+     * [autoFocusGroups] is populated. Sessions still inside their interval are
+     * left untouched so a genuine restart mid-focus keeps the same session.
+     */
+    private suspend fun reconcileStaleAutoFocusSessions() {
+        val statsDao = neth.iecal.curbox.data.db.AppDatabase.getInstance(service).focusStatsDao()
+        val cal = Calendar.getInstance()
+        val calDay = cal.get(Calendar.DAY_OF_WEEK)
+        val currentDay = if (calDay == Calendar.SUNDAY) 6 else calDay - 2
+        val currentMinutes = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
+        val now = System.currentTimeMillis()
+        val runningAuto = statsDao.getRunningSessions().filter { it.wasAutoFocus }
+        for (session in runningAuto) {
+            val group = autoFocusGroups.find { it.groupId == session.groupId }
+            val stillActive = group != null &&
+                group.dailyIntervals[currentDay]?.any { isWithinInterval(currentMinutes, it) } == true
+            if (!stillActive) {
+                statsDao.update(session.copy(status = 1, actualEndTimeInMillis = now))
+            }
+        }
     }
 
     private fun updateSuspendedPackages(serviceContext: Context) {
@@ -494,6 +523,10 @@ class FocusModeBlocker : BaseBlocker() {
                 pendingExitPauseMs.keys.retainAll(validIds)
                 dismissedAutoFocusGroupIds.retainAll {
                     it in validIds && autoFocusResumeAt.containsKey(it)
+                }
+                if (!didReconcileAutoFocusSessions) {
+                    reconcileStaleAutoFocusSessions()
+                    didReconcileAutoFocusSessions = true
                 }
                 updateSuspendedPackages(service)
             }

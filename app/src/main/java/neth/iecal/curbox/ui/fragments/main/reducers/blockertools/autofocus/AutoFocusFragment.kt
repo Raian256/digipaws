@@ -269,8 +269,28 @@ class AutoFocusFragment : Fragment() {
         override fun getItemCount() = items.size
     }
 
+    /**
+     * Whether [group] is inside one of today's intervals right now. Mirrors the
+     * blocker's interval check so the UI agrees with what is actually blocking,
+     * and so a stale, never-closed session can't make an out-of-window schedule
+     * look like it's running.
+     */
+    private fun isScheduleActiveNow(group: AutoFocusGroup): Boolean {
+        val cal = java.util.Calendar.getInstance()
+        val calDay = cal.get(java.util.Calendar.DAY_OF_WEEK)
+        val currentDay = if (calDay == java.util.Calendar.SUNDAY) 6 else calDay - 2
+        val currentMinutes = cal.get(java.util.Calendar.HOUR_OF_DAY) * 60 + cal.get(java.util.Calendar.MINUTE)
+        val intervals = group.dailyIntervals[currentDay] ?: return false
+        return intervals.any { interval ->
+            val start = interval.startHour * 60 + interval.startMinute
+            val end = interval.endHour * 60 + interval.endMinute
+            if (start <= end) currentMinutes in start until end
+            else currentMinutes >= start || currentMinutes < end
+        }
+    }
+
     private fun bindPauseControls(b: ItemAutofocusGroupBinding, group: AutoFocusGroup) {
-        val running = group.groupId in runningGroupIds
+        val running = group.groupId in runningGroupIds && isScheduleActiveNow(group)
         if (!running || !group.exitable) {
             b.tvRunningStatus.visibility = View.GONE
             b.tvPausePending.visibility = View.GONE
