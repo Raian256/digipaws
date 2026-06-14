@@ -473,9 +473,4 @@
 
     <string name="anti_modifications_section_essentials">Essential apps list</string>
     <string name="anti_modifications_essentials_item_label">Essential apps list (singleton)</string>
-
-    <plurals name="accessibility_disabled_this_week">
-        <item quantity="one">time you switched off a Curbox accessibility service in the last 7 days</item>
-        <item quantity="other">times you switched off a Curbox accessibility service in the last 7 days</item>
-    </plurals>
 </resources>

@@ -10,7 +10,6 @@ import neth.iecal.curbox.ui.fragments.installation.AccessibilityGuide
 import neth.iecal.curbox.ui.fragments.installation.onboarding.OnboardingFragment
 import neth.iecal.curbox.ui.fragments.main.focus.FocusFragment
 import neth.iecal.curbox.ui.fragments.main.reducers.ReducersFragment
-import neth.iecal.curbox.ui.fragments.main.reducers.analytics.AccessibilityDisablesLogFragment
 import neth.iecal.curbox.ui.fragments.main.reducers.analytics.BlockedAppsLogFragment
 import neth.iecal.curbox.ui.fragments.main.reducers.analytics.IntentsLogFragment
 import neth.iecal.curbox.ui.fragments.main.reducers.anti_stimulants.grayscale.CreateGrayscaleGroupFragment
@@ -67,7 +66,6 @@ class FragmentActivity : AppCompatActivity() {
                 ViewBlockerFragment.FRAGMENT_ID,
                 IntentsLogFragment.FRAGMENT_ID,
                 BlockedAppsLogFragment.FRAGMENT_ID,
-                AccessibilityDisablesLogFragment.FRAGMENT_ID,
             neth.iecal.curbox.ui.fragments.main.reducers.anti_stimulants.mindful_messages.MindfulMessagesFragment.FRAGMENT_ID,
             AntiUninstallFragment.FRAGMENT_ID,
             ChooseAntiUninstallModeFragment.FRAGMENT_ID,
@@ -96,7 +94,6 @@ class FragmentActivity : AppCompatActivity() {
                     neth.iecal.curbox.ui.fragments.main.reducers.anti_stimulants.mindful_messages.MindfulMessagesFragment.FRAGMENT_ID -> neth.iecal.curbox.ui.fragments.main.reducers.anti_stimulants.mindful_messages.MindfulMessagesFragment()
                     IntentsLogFragment.FRAGMENT_ID -> IntentsLogFragment()
                     BlockedAppsLogFragment.FRAGMENT_ID -> BlockedAppsLogFragment()
-                    AccessibilityDisablesLogFragment.FRAGMENT_ID -> AccessibilityDisablesLogFragment()
                     AntiUninstallFragment.FRAGMENT_ID -> AntiUninstallFragment()
                     ChooseAntiUninstallModeFragment.FRAGMENT_ID -> ChooseAntiUninstallModeFragment()
                     SetupPasswordModeFragment.FRAGMENT_ID -> SetupPasswordModeFragment()

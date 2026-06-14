@@ -4,14 +4,8 @@ import android.accessibilityservice.AccessibilityService
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
-import android.util.Log
 import android.view.accessibility.AccessibilityEvent
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
-import neth.iecal.curbox.data.db.AccessibilityDisableLogEntity
-import neth.iecal.curbox.data.db.AppDatabase
 import neth.iecal.curbox.utils.DataStoreManager
-import neth.iecal.curbox.utils.PermissionUtils
 import neth.iecal.curbox.anti_stimulants.MindfulMessageTracker
 import kotlin.lazy
 
@@ -22,9 +16,6 @@ open class BaseBlockingService : AccessibilityService() {
         // enough for the Back to finish() the blocked activity (pop it off the
         // host task's stack) before Home backgrounds the task.
         private const val BACK_THEN_HOME_DELAY_MS = 120L
-
-        // How long accessibility-disable records are kept on-device (~1 year).
-        private const val DISABLE_LOG_RETENTION_MS = 365L * 24 * 60 * 60 * 1000
     }
 
     val dataStoreManager  by lazy {
@@ -93,42 +84,6 @@ open class BaseBlockingService : AccessibilityService() {
 
     override fun onUnbind(intent: android.content.Intent?): Boolean {
         actionHandler.removeCallbacksAndMessages(null)
-        recordDeliberateDisable()
         return super.onUnbind(intent)
-    }
-
-    /**
-     * onUnbind fires both when the user turns the service off and when the system
-     * tears it down (reboot, app update, low-memory kill). We only want to count
-     * the former. The discriminator: when the *user* disables the service via
-     * Settings, the component is removed from [Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES]
-     * before teardown; on a system teardown the user's preference is left intact
-     * and the component is still listed. So if we are no longer in that list, the
-     * user did this on purpose — log it.
-     *
-     * The write is done with runBlocking because the hosting process may be killed
-     * shortly after onUnbind returns; a fire-and-forget coroutine could be lost.
-     */
-    private fun recordDeliberateDisable() {
-        try {
-            if (PermissionUtils.isAccessibilityServiceEnabled(this, this::class.java)) {
-                // Still enabled in the user's preference -> system teardown, not a disable.
-                return
-            }
-            val cutoff = System.currentTimeMillis() - DISABLE_LOG_RETENTION_MS
-            runBlocking(Dispatchers.IO) {
-                AppDatabase.getInstance(applicationContext)
-                    .accessibilityDisableLogDao()
-                    .insertAndPrune(
-                        AccessibilityDisableLogEntity(
-                            timestamp = System.currentTimeMillis(),
-                            serviceName = this@BaseBlockingService::class.java.simpleName
-                        ),
-                        cutoff
-                    )
-            }
-        } catch (t: Throwable) {
-            Log.e("AccessibilityDisable", "Failed to record disable", t)
-        }
     }
 }

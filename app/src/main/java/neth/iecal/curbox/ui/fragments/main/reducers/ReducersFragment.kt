@@ -67,9 +67,6 @@ class ReducersFragment : Fragment() {
         view.findViewById<MaterialCardView>(R.id.card_blocked_apps_log)
             .setOnClickListener(open(neth.iecal.curbox.ui.fragments.main.reducers.analytics.BlockedAppsLogFragment.FRAGMENT_ID))
 
-        view.findViewById<MaterialCardView>(R.id.card_accessibility_disables)
-            .setOnClickListener(open(neth.iecal.curbox.ui.fragments.main.reducers.analytics.AccessibilityDisablesLogFragment.FRAGMENT_ID))
-
         view.findViewById<Button>(R.id.btn_manage_essentials).setOnClickListener {
             startActivity(Intent(requireContext(), ManageEssentialsActivity::class.java))
         }
