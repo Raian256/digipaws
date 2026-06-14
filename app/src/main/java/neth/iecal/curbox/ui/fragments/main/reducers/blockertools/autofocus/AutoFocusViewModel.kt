@@ -6,9 +6,12 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.application
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import neth.iecal.curbox.blockers.FocusModeBlocker
 import neth.iecal.curbox.data.models.AutoFocusGroup
@@ -16,9 +19,20 @@ import neth.iecal.curbox.utils.DataStoreManager
 
 class AutoFocusViewModel(application: Application) : AndroidViewModel(application) {
     private val dataStoreManager = DataStoreManager(application)
-    
+    private val db = neth.iecal.curbox.data.db.AppDatabase.getInstance(application)
+
     private val _groups = MutableStateFlow<List<AutoFocusGroup>>(emptyList())
     val groups: StateFlow<List<AutoFocusGroup>> = _groups
+
+    /** Ids of the auto-focus groups that have a focus session running right now. */
+    val runningGroupIds: StateFlow<Set<String>> =
+        db.focusStatsDao().getAllSessionsFlow()
+            .map { sessions ->
+                sessions.filter { it.wasAutoFocus && it.status == 0 }
+                    .map { it.groupId }
+                    .toSet()
+            }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
 
     var currentDailyIntervals: MutableMap<Int, MutableList<neth.iecal.curbox.data.models.TimeInterval>> = mutableMapOf()
 

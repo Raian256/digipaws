@@ -1,16 +1,11 @@
 package neth.iecal.curbox.ui.fragments.main.focus
 
-import android.content.BroadcastReceiver
-import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
-import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
-import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
@@ -33,100 +28,6 @@ class FocusFragment : Fragment() {
     private val viewModel: FocusViewModel by activityViewModels()
 
     private var isProgrammaticScroll = false
-
-    private var lastBoundAutoFocusGroupId: String? = null
-
-    private val cancelExitReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action != FocusModeBlocker.INTENT_ACTION_CANCEL_EXIT_AUTO_FOCUS) return
-            if (_binding == null) return
-            clearAllAutoFocusCooldowns()
-            lastBoundAutoFocusGroupId?.let { gid ->
-                viewModel.autoFocusGroups.value.find { it.groupId == gid }?.let { bindExitAutoFocusButton(it) }
-            }
-        }
-    }
-
-    private fun cooldownPrefs() =
-        requireContext().getSharedPreferences("AppPreferences", Context.MODE_PRIVATE)
-
-    private fun cooldownKey(groupId: String) = "autofocus_cooldown_end_$groupId"
-
-    private fun cooldownEndFor(groupId: String): Long =
-        cooldownPrefs().getLong(cooldownKey(groupId), 0L)
-
-    private fun setCooldownEnd(groupId: String, cooldownMinutes: Int) {
-        if (cooldownMinutes <= 0) return
-        cooldownPrefs().edit()
-            .putLong(cooldownKey(groupId), System.currentTimeMillis() + cooldownMinutes * 60_000L)
-            .apply()
-    }
-
-    private fun clearAllAutoFocusCooldowns() {
-        val prefs = cooldownPrefs()
-        val editor = prefs.edit()
-        prefs.all.keys.filter { it.startsWith("autofocus_cooldown_end_") }.forEach { editor.remove(it) }
-        editor.apply()
-    }
-
-    private fun bindExitAutoFocusButton(group: neth.iecal.curbox.data.models.AutoFocusGroup) {
-        lastBoundAutoFocusGroupId = group.groupId
-        if (!group.exitable) {
-            binding.btnExitAutoFocus.visibility = View.GONE
-            binding.tvExitPendingTime.visibility = View.GONE
-            return
-        }
-        binding.btnExitAutoFocus.visibility = View.VISIBLE
-        val cooldownEnd = cooldownEndFor(group.groupId)
-        val pending = System.currentTimeMillis() < cooldownEnd
-        if (pending) {
-            binding.btnExitAutoFocus.isEnabled = false
-            binding.btnExitAutoFocus.text = getString(R.string.exit_cooldown_pending_button)
-            binding.btnExitAutoFocus.setOnClickListener(null)
-            val timeFmt = android.text.format.DateFormat.getTimeFormat(requireContext())
-            binding.tvExitPendingTime.text =
-                getString(R.string.exit_cooldown_eta, timeFmt.format(java.util.Date(cooldownEnd)))
-            binding.tvExitPendingTime.visibility = View.VISIBLE
-            scheduleAutoFocusButtonRefresh(group, cooldownEnd - System.currentTimeMillis())
-        } else {
-            if (cooldownEnd != 0L) {
-                cooldownPrefs().edit().remove(cooldownKey(group.groupId)).apply()
-            }
-            binding.tvExitPendingTime.visibility = View.GONE
-            binding.btnExitAutoFocus.isEnabled = true
-            binding.btnExitAutoFocus.text = getString(R.string.stop_auto_focus)
-            binding.btnExitAutoFocus.setOnClickListener {
-                val endAt = cooldownEndFor(group.groupId)
-                if (System.currentTimeMillis() < endAt) {
-                    Toast.makeText(
-                        requireContext(),
-                        getString(R.string.exit_cooldown_already_running),
-                        Toast.LENGTH_SHORT
-                    ).show()
-                    bindExitAutoFocusButton(group)
-                    return@setOnClickListener
-                }
-                showExitAutoFocusDialog(group.groupId, group.groupName, group.exitCooldownMinutes)
-            }
-        }
-    }
-
-    private fun scheduleAutoFocusButtonRefresh(
-        group: neth.iecal.curbox.data.models.AutoFocusGroup,
-        delayMs: Long
-    ) {
-        if (_binding == null) return
-        binding.btnExitAutoFocus.removeCallbacks(autoFocusButtonRefresher)
-        autoFocusButtonRefresher = Runnable {
-            if (_binding == null) return@Runnable
-            if (lastBoundAutoFocusGroupId == group.groupId) {
-                bindExitAutoFocusButton(group)
-            }
-        }
-        binding.btnExitAutoFocus.postDelayed(autoFocusButtonRefresher, delayMs.coerceAtLeast(0L) + 250L)
-    }
-
-    private var autoFocusButtonRefresher: Runnable = Runnable {}
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -184,8 +85,6 @@ class FocusFragment : Fragment() {
                                 } else {
                                     binding.tvAutoFocusTimeRange.text = group.groupName
                                 }
-                                
-                                bindExitAutoFocusButton(group)
                             } else {
                                 binding.cvActiveAutoFocus.visibility = View.GONE
                                 binding.textHeader.visibility = View.VISIBLE
@@ -217,26 +116,6 @@ class FocusFragment : Fragment() {
                 intent.setPackage(requireContext().packageName)
                 requireContext().sendBroadcast(intent)
             }
-        }
-
-        val filter = IntentFilter(FocusModeBlocker.INTENT_ACTION_CANCEL_EXIT_AUTO_FOCUS)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            requireContext().registerReceiver(cancelExitReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            @Suppress("UnspecifiedRegisterReceiverFlag")
-            requireContext().registerReceiver(cancelExitReceiver, filter)
-        }
-
-        lastBoundAutoFocusGroupId?.let { gid ->
-            viewModel.autoFocusGroups.value.find { it.groupId == gid }?.let { bindExitAutoFocusButton(it) }
-        }
-    }
-
-    override fun onPause() {
-        super.onPause()
-        try {
-            requireContext().unregisterReceiver(cancelExitReceiver)
-        } catch (_: IllegalArgumentException) {
         }
     }
 
@@ -321,74 +200,7 @@ class FocusFragment : Fragment() {
         updateTime(minutes - 1)
     }
 
-
-
-
-    private fun showExitAutoFocusDialog(groupId: String, groupName: String, exitCooldownMinutes: Int) {
-        val ctx = requireContext()
-        val view = LayoutInflater.from(ctx).inflate(R.layout.dialog_exit_auto_focus, null)
-        val etIntent = view.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.et_intent)
-        val etMinutes = view.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.et_minutes)
-        val tilIntent = view.findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.til_intent)
-
-        val dialog = com.google.android.material.dialog.MaterialAlertDialogBuilder(ctx)
-            .setTitle(getString(R.string.exit_auto_focus_dialog_title))
-            .setView(view)
-            .setNegativeButton(android.R.string.cancel, null)
-            .setPositiveButton(android.R.string.ok, null)
-            .create()
-
-        dialog.setOnShowListener {
-            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                if (System.currentTimeMillis() < cooldownEndFor(groupId)) {
-                    Toast.makeText(ctx, getString(R.string.exit_cooldown_already_running), Toast.LENGTH_SHORT).show()
-                    dialog.dismiss()
-                    viewModel.autoFocusGroups.value.find { it.groupId == groupId }?.let { bindExitAutoFocusButton(it) }
-                    return@setOnClickListener
-                }
-                val intentText = etIntent.text?.toString()?.trim().orEmpty()
-                val minutes = etMinutes.text?.toString()?.trim()?.toIntOrNull() ?: 0
-                if (intentText.isEmpty()) {
-                    tilIntent.error = getString(R.string.exit_auto_focus_intent_required)
-                    return@setOnClickListener
-                }
-                if (minutes <= 0) {
-                    etMinutes.error = getString(R.string.exit_auto_focus_minutes_required)
-                    return@setOnClickListener
-                }
-                val pauseMs = minutes * 60_000L
-
-                viewLifecycleOwner.lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                    val log = neth.iecal.curbox.data.db.IntentLogEntity(
-                        timestamp = System.currentTimeMillis(),
-                        packageName = "autofocus:$groupName",
-                        intentText = intentText,
-                        unlockedDurationMs = pauseMs
-                    )
-                    neth.iecal.curbox.data.db.AppDatabase.getInstance(ctx.applicationContext)
-                        .intentLogDao().insert(log)
-                }
-
-                setCooldownEnd(groupId, exitCooldownMinutes)
-
-                val broadcastIntent = Intent(FocusModeBlocker.INTENT_ACTION_EXIT_AUTO_FOCUS)
-                broadcastIntent.setPackage(ctx.packageName)
-                broadcastIntent.putExtra("group_id", groupId)
-                broadcastIntent.putExtra("pause_minutes", minutes)
-                broadcastIntent.putExtra("intent_text", intentText)
-                ctx.sendBroadcast(broadcastIntent)
-                dialog.dismiss()
-
-                viewModel.autoFocusGroups.value.find { it.groupId == groupId }?.let { bindExitAutoFocusButton(it) }
-            }
-        }
-        dialog.show()
-    }
-
     override fun onDestroyView() {
-        if (_binding != null) {
-            binding.btnExitAutoFocus.removeCallbacks(autoFocusButtonRefresher)
-        }
         super.onDestroyView()
         _binding = null
     }

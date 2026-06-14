@@ -485,7 +485,16 @@ class FocusModeBlocker : BaseBlocker() {
                 }
 
                 autoFocusGroups = settings.autoFocusGroups
-                dismissedAutoFocusGroupIds.clear()
+                // Drop exit/pause state for groups that no longer exist, but keep
+                // pauses that are still counting down so editing an unrelated
+                // setting doesn't silently resume a paused schedule.
+                val validIds = autoFocusGroups.mapTo(mutableSetOf()) { it.groupId }
+                autoFocusResumeAt.keys.retainAll(validIds)
+                pendingExitTimes.keys.retainAll(validIds)
+                pendingExitPauseMs.keys.retainAll(validIds)
+                dismissedAutoFocusGroupIds.retainAll {
+                    it in validIds && autoFocusResumeAt.containsKey(it)
+                }
                 updateSuspendedPackages(service)
             }
         }
