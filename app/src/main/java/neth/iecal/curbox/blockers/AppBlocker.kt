@@ -54,6 +54,13 @@ class AppBlocker() : BaseBlocker() {
          * result_id : String -> Package name of app to be put into cooldown
          */
         const val INTENT_ACTION_REFRESH_APP_BLOCKER_COOLDOWN = "neth.iecal.curbox.refresh.appblocker.cooldown"
+
+        /**
+         * Forces the running blocker to fetch a fresh location fix and
+         * re-evaluate the foregrounded app, for when the periodic geofence
+         * location hasn't updated on its own.
+         */
+        const val INTENT_ACTION_REFRESH_GEOFENCE_LOCATION = "neth.iecal.curbox.refresh.geofence.location"
         private const val TARGET_EVENTS_MASK = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
     }
 
@@ -204,6 +211,7 @@ class AppBlocker() : BaseBlocker() {
         val filter = IntentFilter().apply {
             addAction(INTENT_ACTION_REFRESH_APP_BLOCKER)
             addAction(INTENT_ACTION_REFRESH_APP_BLOCKER_COOLDOWN)
+            addAction(INTENT_ACTION_REFRESH_GEOFENCE_LOCATION)
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             service.registerReceiver(refreshReceiver, filter, RECEIVER_EXPORTED)
@@ -568,6 +576,9 @@ class AppBlocker() : BaseBlocker() {
             when (intent.action) {
                 INTENT_ACTION_REFRESH_APP_BLOCKER -> setupAppBlocker(service)
                 INTENT_ACTION_REFRESH_APP_BLOCKER_COOLDOWN -> handlePutCooldownIntentBroadcast(intent)
+                INTENT_ACTION_REFRESH_GEOFENCE_LOCATION -> {
+                    if (::locationProvider.isInitialized) locationProvider.requestSingleUpdate()
+                }
             }
         }
     }

@@ -17,6 +17,7 @@ import androidx.lifecycle.lifecycleScope
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.launch
 import java.io.File
+import neth.iecal.curbox.blockers.AppBlocker
 import neth.iecal.curbox.databinding.FragmentInfoBinding
 import neth.iecal.curbox.utils.backup.BackupManager
 
@@ -79,6 +80,10 @@ class InfoFragment : Fragment() {
 
         binding.btnActionCrashLogs.setOnClickListener {
             showCrashLogs()
+        }
+
+        binding.btnRefreshLocation.setOnClickListener {
+            requestLocationRefresh()
         }
 
         binding.btnExportBackup.setOnClickListener {
@@ -145,6 +150,17 @@ class InfoFragment : Fragment() {
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
+    }
+
+    private fun requestLocationRefresh() {
+        val intent = Intent(AppBlocker.INTENT_ACTION_REFRESH_GEOFENCE_LOCATION)
+            .setPackage(requireContext().packageName)
+        requireContext().sendBroadcast(intent)
+        Toast.makeText(
+            requireContext(),
+            getString(R.string.refresh_location_requested),
+            Toast.LENGTH_SHORT
+        ).show()
     }
 
     private fun openUrl(url: String) {

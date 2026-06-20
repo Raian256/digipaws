@@ -29,6 +29,12 @@
     <string name="location_unavailable_block_subtitle">When the device location can\'t be read, keep geofenced groups blocking instead of letting them through.</string>
     <string name="anti_modifications_section_geofence_failmode">Location-unavailable fallback</string>
     <string name="anti_modifications_geofence_failmode_item_label">Block-when-location-unavailable setting</string>
+
+    <!-- Manual location refresh (Info screen) -->
+    <string name="refresh_location_title">Refresh location</string>
+    <string name="refresh_location_description">Geofenced blockers rely on your current location. If a blocker isn\'t activating where it should, force a fresh location update here.</string>
+    <string name="refresh_location_button">Update current location</string>
+    <string name="refresh_location_requested">Refreshing current location…</string>
     <string name="focus_mode">Focus Mode</string>
     <string name="add">Add</string>
     <string name="save">Save</string>

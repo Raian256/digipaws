@@ -96,6 +96,39 @@ class LocationProvider(private val context: Context) {
     }
 
     /**
+     * Request one fresh fix from every enabled provider, independent of the
+     * periodic [start] listener. Useful when the cached fix has gone stale and
+     * the user wants geofences re-evaluated against their current position right
+     * now. Each provider auto-removes the listener after delivering its fix.
+     *
+     * No-op if permission is missing or no location manager is available.
+     */
+    fun requestSingleUpdate() {
+        val lm = locationManager ?: return
+        if (!hasPermission()) return
+
+        val oneShot = LocationListener { loc ->
+            if (lastLocation == null || loc.time >= lastLocation!!.time) {
+                lastLocation = loc
+                onUpdate?.invoke()
+            }
+        }
+
+        try {
+            if (lm.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                lm.requestSingleUpdate(LocationManager.GPS_PROVIDER, oneShot, Looper.getMainLooper())
+            }
+            if (lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+                lm.requestSingleUpdate(LocationManager.NETWORK_PROVIDER, oneShot, Looper.getMainLooper())
+            }
+        } catch (e: SecurityException) {
+            Log.e("LocationProvider", "Missing location permission: $e")
+        } catch (e: Exception) {
+            Log.e("LocationProvider", "Failed to request single update: $e")
+        }
+    }
+
+    /**
      * Distance in metres from [lastLocation] to ([lat], [lng]), or null if no
      * fix is available.
      */
