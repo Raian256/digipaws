@@ -341,17 +341,23 @@ class AppBlocker() : BaseBlocker() {
      *                       [blockWhenLocationUnavailable] choice: fail open
      *                       (don't block) by default, or fail closed (stay
      *                       active) when the user opts in.
-     *  - INSIDE  mode    -> active while within [GeoFenceConfig.radiusMeters].
-     *  - OUTSIDE mode    -> active while beyond that radius.
+     *  - INSIDE  mode    -> active while within any point's radius.
+     *  - OUTSIDE mode    -> active while beyond every point's radius.
      */
     private fun isActiveByLocation(geo: GeoFenceConfig): Boolean {
         if (!geo.enabled) return true
-        val distance = locationProvider.distanceTo(geo.latitude, geo.longitude)
-            ?: return blockWhenLocationUnavailable
-        val inside = distance <= geo.radiusMeters
+        val points = geo.resolvedPoints
+        if (points.isEmpty()) return true
+        // distanceTo only returns null when there is no location fix at all, so
+        // either all points resolve to a distance or none do.
+        val distances = points.mapNotNull { p ->
+            locationProvider.distanceTo(p.latitude, p.longitude)?.let { it to p.radiusMeters }
+        }
+        if (distances.isEmpty()) return blockWhenLocationUnavailable
+        val insideAny = distances.any { (distance, radius) -> distance <= radius }
         return when (geo.mode) {
-            GeoFenceMode.INSIDE -> inside
-            GeoFenceMode.OUTSIDE -> !inside
+            GeoFenceMode.INSIDE -> insideAny
+            GeoFenceMode.OUTSIDE -> !insideAny
         }
     }
 

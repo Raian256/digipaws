@@ -18,14 +18,20 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import neth.iecal.curbox.R
 import neth.iecal.curbox.data.models.GeoFenceConfig
 import neth.iecal.curbox.data.models.GeoFenceMode
+import neth.iecal.curbox.data.models.GeoFencePoint
 import neth.iecal.curbox.databinding.FragmentAppBlockerGeofenceSettingsBinding
+import neth.iecal.curbox.databinding.ItemGeofencePointBinding
 import neth.iecal.curbox.utils.LocationProvider
 
 /**
  * Bottom sheet for configuring the optional geofence activation condition on an
- * app-block group. The centre point is captured from the device's current
- * location or typed in manually — there is no map, since the app holds no
- * network permission and therefore cannot fetch map tiles.
+ * app-block group. Any number of centre points can be added; each is captured
+ * from the device's current location or typed in manually — there is no map,
+ * since the app holds no network permission and therefore cannot fetch map
+ * tiles.
+ *
+ * With [GeoFenceMode.INSIDE] the group is active while inside any point's
+ * radius; with [GeoFenceMode.OUTSIDE] it is active while outside every point.
  */
 class GeoFenceSettingsFragment : BottomSheetDialogFragment() {
 
@@ -38,6 +44,12 @@ class GeoFenceSettingsFragment : BottomSheetDialogFragment() {
     private val viewModel: AppBlockerSettingViewModel by activityViewModels()
 
     private var locationProvider: LocationProvider? = null
+
+    /** Live row bindings, one per centre point currently shown. */
+    private val pointRows = mutableListOf<ItemGeofencePointBinding>()
+
+    /** Row awaiting a location fix from a "use current location" tap. */
+    private var pendingCaptureRow: ItemGeofencePointBinding? = null
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -68,11 +80,14 @@ class GeoFenceSettingsFragment : BottomSheetDialogFragment() {
 
         binding.switchGeofenceEnabled.setOnCheckedChangeListener { _, isChecked ->
             binding.geofenceOptionsContainer.visibility = if (isChecked) View.VISIBLE else View.GONE
-            if (isChecked) maybeWarnAboutBackgroundLocation()
+            if (isChecked) {
+                if (pointRows.isEmpty()) addPointRow(null)
+                maybeWarnAboutBackgroundLocation()
+            }
         }
 
-        binding.btnUseCurrentLocation.setOnClickListener {
-            ensurePermissionThenCapture()
+        binding.btnAddLocation.setOnClickListener {
+            addPointRow(null)
         }
 
         binding.saveSettings.setOnClickListener {
@@ -90,13 +105,55 @@ class GeoFenceSettingsFragment : BottomSheetDialogFragment() {
             GeoFenceMode.OUTSIDE -> binding.rgGeofenceMode.check(R.id.rb_outside)
         }
 
-        // Only prefill coordinates that were actually set, so a brand-new group
-        // shows empty fields rather than "0.0, 0.0".
-        if (config.latitude != 0.0 || config.longitude != 0.0) {
-            binding.etLatitude.setText(config.latitude.toString())
-            binding.etLongitude.setText(config.longitude.toString())
+        val points = config.resolvedPoints
+        if (points.isEmpty()) {
+            // Always show one empty row to fill in, even for a brand-new group.
+            addPointRow(null)
+        } else {
+            points.forEach { addPointRow(it) }
         }
-        binding.etRadius.setText(config.radiusMeters.toString())
+    }
+
+    /**
+     * Inflate a point row, optionally prefilled from [point], wire its buttons
+     * and append it to the container.
+     */
+    private fun addPointRow(point: GeoFencePoint?) {
+        val rowBinding = ItemGeofencePointBinding.inflate(
+            layoutInflater, binding.pointsContainer, false
+        )
+
+        if (point != null && (point.latitude != 0.0 || point.longitude != 0.0)) {
+            rowBinding.etLatitude.setText(point.latitude.toString())
+            rowBinding.etLongitude.setText(point.longitude.toString())
+        }
+        rowBinding.etRadius.setText((point?.radiusMeters ?: GeoFencePoint().radiusMeters).toString())
+
+        rowBinding.btnUseCurrentLocation.setOnClickListener {
+            pendingCaptureRow = rowBinding
+            ensurePermissionThenCapture()
+        }
+
+        rowBinding.btnRemovePoint.setOnClickListener {
+            binding.pointsContainer.removeView(rowBinding.root)
+            pointRows.remove(rowBinding)
+            if (pendingCaptureRow === rowBinding) pendingCaptureRow = null
+        }
+
+        pointRows.add(rowBinding)
+        binding.pointsContainer.addView(rowBinding.root)
+        updateRowTitles()
+    }
+
+    /** Number the rows ("Location 1", "Location 2", …) for clarity. */
+    private fun updateRowTitles() {
+        pointRows.forEachIndexed { index, row ->
+            row.tvPointTitle.text = if (pointRows.size > 1) {
+                getString(R.string.location_activation_center_point) + " " + (index + 1)
+            } else {
+                getString(R.string.location_activation_center_point)
+            }
+        }
     }
 
     private fun ensurePermissionThenCapture() {
@@ -114,18 +171,16 @@ class GeoFenceSettingsFragment : BottomSheetDialogFragment() {
     }
 
     private fun captureCurrentLocation() {
+        val row = pendingCaptureRow ?: return
         val provider = locationProvider ?: LocationProvider(requireContext()).also { locationProvider = it }
-        binding.tvCurrentLocationStatus.text = getString(R.string.location_activation_locating)
+        row.tvCurrentLocationStatus.visibility = View.VISIBLE
+        row.tvCurrentLocationStatus.text = getString(R.string.location_activation_locating)
 
-        // Refresh the fields as soon as any fix (cached or fresh) is available.
+        // Refresh the target row as soon as any fix (cached or fresh) is available.
         provider.onUpdate = {
             val loc = provider.lastLocation
-            if (loc != null && _binding != null) {
-                binding.etLatitude.setText(loc.latitude.toString())
-                binding.etLongitude.setText(loc.longitude.toString())
-                binding.tvCurrentLocationStatus.text = getString(
-                    R.string.location_activation_captured, loc.latitude, loc.longitude
-                )
+            if (loc != null && _binding != null && pointRows.contains(row)) {
+                fillRowFromLocation(row, loc.latitude, loc.longitude)
             }
         }
         provider.start()
@@ -133,12 +188,15 @@ class GeoFenceSettingsFragment : BottomSheetDialogFragment() {
         // Use whatever cached fix is already available immediately.
         val cached = provider.lastLocation
         if (cached != null) {
-            binding.etLatitude.setText(cached.latitude.toString())
-            binding.etLongitude.setText(cached.longitude.toString())
-            binding.tvCurrentLocationStatus.text = getString(
-                R.string.location_activation_captured, cached.latitude, cached.longitude
-            )
+            fillRowFromLocation(row, cached.latitude, cached.longitude)
         }
+    }
+
+    private fun fillRowFromLocation(row: ItemGeofencePointBinding, lat: Double, lng: Double) {
+        row.etLatitude.setText(lat.toString())
+        row.etLongitude.setText(lng.toString())
+        row.tvCurrentLocationStatus.visibility = View.VISIBLE
+        row.tvCurrentLocationStatus.text = getString(R.string.location_activation_captured, lat, lng)
     }
 
     /**
@@ -181,25 +239,39 @@ class GeoFenceSettingsFragment : BottomSheetDialogFragment() {
             return true
         }
 
-        val lat = binding.etLatitude.text?.toString()?.trim()?.toDoubleOrNull()
-        val lng = binding.etLongitude.text?.toString()?.trim()?.toDoubleOrNull()
-        val radius = binding.etRadius.text?.toString()?.trim()?.toFloatOrNull()
-
-        if (lat == null || lng == null || lat !in -90.0..90.0 || lng !in -180.0..180.0) {
+        if (pointRows.isEmpty()) {
             Toast.makeText(
                 requireContext(),
-                getString(R.string.location_activation_invalid_coords),
+                getString(R.string.location_activation_no_points),
                 Toast.LENGTH_SHORT
             ).show()
             return false
         }
-        if (radius == null || radius <= 0f) {
-            Toast.makeText(
-                requireContext(),
-                getString(R.string.location_activation_invalid_radius),
-                Toast.LENGTH_SHORT
-            ).show()
-            return false
+
+        val points = mutableListOf<GeoFencePoint>()
+        for (row in pointRows) {
+            val lat = row.etLatitude.text?.toString()?.trim()?.toDoubleOrNull()
+            val lng = row.etLongitude.text?.toString()?.trim()?.toDoubleOrNull()
+            val radius = row.etRadius.text?.toString()?.trim()?.toFloatOrNull()
+
+            if (lat == null || lng == null || lat !in -90.0..90.0 || lng !in -180.0..180.0) {
+                Toast.makeText(
+                    requireContext(),
+                    getString(R.string.location_activation_invalid_coords),
+                    Toast.LENGTH_SHORT
+                ).show()
+                return false
+            }
+            if (radius == null || radius <= 0f) {
+                Toast.makeText(
+                    requireContext(),
+                    getString(R.string.location_activation_invalid_radius),
+                    Toast.LENGTH_SHORT
+                ).show()
+                return false
+            }
+
+            points.add(GeoFencePoint(latitude = lat, longitude = lng, radiusMeters = radius))
         }
 
         val mode = if (binding.rgGeofenceMode.checkedRadioButtonId == R.id.rb_outside) {
@@ -210,10 +282,8 @@ class GeoFenceSettingsFragment : BottomSheetDialogFragment() {
 
         viewModel.geoFenceConfig = GeoFenceConfig(
             enabled = true,
-            latitude = lat,
-            longitude = lng,
-            radiusMeters = radius,
-            mode = mode
+            mode = mode,
+            points = points
         )
         return true
     }
@@ -228,6 +298,8 @@ class GeoFenceSettingsFragment : BottomSheetDialogFragment() {
         super.onDestroyView()
         locationProvider?.stop()
         locationProvider = null
+        pointRows.clear()
+        pendingCaptureRow = null
         _binding = null
     }
 }

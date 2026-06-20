@@ -12,6 +12,10 @@
     <string name="location_activation_inside">Inside the radius</string>
     <string name="location_activation_outside">Outside the radius</string>
     <string name="location_activation_center_point">Center point</string>
+    <string name="location_activation_locations">Locations</string>
+    <string name="location_activation_add_location">Add location</string>
+    <string name="location_activation_remove_point">Remove location</string>
+    <string name="location_activation_no_points">Add at least one location.</string>
     <string name="location_activation_use_current">Use current location</string>
     <string name="location_activation_latitude">Latitude</string>
     <string name="location_activation_longitude">Longitude</string>
