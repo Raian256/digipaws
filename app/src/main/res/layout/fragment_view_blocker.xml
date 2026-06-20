@@ -34,7 +34,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="This feature is still in beta and might occasionally break. The element picker is recommended for advanced users only. Join our Discord for more blocking rules."
+                    android:text="This feature is still in beta and might occasionally break. The element picker is recommended for advanced users only."
                     android:alpha="0.9" />
 
             </LinearLayout>

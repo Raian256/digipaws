@@ -231,13 +231,6 @@
     <string name="track_the_number_of_reels_consumed">Track and analyze the number of short-form content consumed</string>
     <string name="grayscale_filter">Grayscale Filter</string>
     <string name="reduce_visual_stimulation">Reduce visual stimulation</string>
-    <string name="fuel_the_developer">Fuel the Developer ☕</string>
-    <string name="hello_this_is_nethical_the_creator">Hello, this is Nethical, the creator of curbox. I\'m a 17-year-old high school student with a passion for technology and computers. A few years ago, I couldn\'t find any free app blocker solution that perfectly suited my needs, so I decided to build one myself. If you find curbox useful, please consider donating even a small amount to support its continued development. Thank you!</string>
-    <string name="support_the_project">Support the Project ↗</string>
-    <string name="join_the_focus_pack">Join the Focus Pack 🐾</string>
-    <string name="dont_fix_your_screen_time_alone">Don\'t fix your screen time alone. Join our Discord of like-minded people holding each other accountable and sharing focus strategies to improve themselves.</string>
-    <string name="join_the_discord">Join the Discord</string>
-    <string name="curboxapp">\@CurboxApp</string>
     <string name="system_diagnostics">System Diagnostics</string>
     <string name="backup_and_restore">Backup &amp; Restore</string>
     <string name="backup_and_restore_description">Save all your Curbox settings to a JSON file you can keep or use to restore on another device.</string>
@@ -412,7 +405,7 @@
     <string name="usage">Usage</string>
     <string name="focus">Focus</string>
     <string name="reducers">Reducers</string>
-    <string name="info">Info</string>
+    <string name="info">Settings</string>
     <string name="this_app_is_currently_under_focus">This app is currently under focus mode</string>
     <string name="blocked_keyword_word_was_found">Blocked keyword -word was found.</string>
     <string name="please_provide_draw_over_other_apps">Please provide \'Draw over other apps\' permission to make this service work properly. </string>

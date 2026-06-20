@@ -60,24 +60,6 @@ class InfoFragment : Fragment() {
     }
 
     private fun setupClickListeners() {
-        binding.btnSupport.setOnClickListener {
-            // Replace with actual website/donation link
-            openUrl("https://github.com/nethical6")
-        }
-        
-        binding.btnDiscord.setOnClickListener {
-            // Replace with actual Discord invite link
-            openUrl("https://discord.com/invite/Vs9mwUtuCN")
-        }
-
-        binding.cardInstagram.setOnClickListener {
-            openUrl("https://instagram.com/curbox.app")
-        }
-
-        binding.cardTiktok.setOnClickListener {
-            openUrl("https://tiktok.com/@curbox.app")
-        }
-
         binding.btnActionCrashLogs.setOnClickListener {
             showCrashLogs()
         }
@@ -161,15 +143,6 @@ class InfoFragment : Fragment() {
             getString(R.string.refresh_location_requested),
             Toast.LENGTH_SHORT
         ).show()
-    }
-
-    private fun openUrl(url: String) {
-        try {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-            startActivity(intent)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
     }
 
     private fun showCrashLogs() {
