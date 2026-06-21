@@ -14,8 +14,6 @@ import neth.iecal.curbox.ui.fragments.main.focus.FocusFragment
 import neth.iecal.curbox.ui.fragments.main.reducers.ReducersFragment
 import neth.iecal.curbox.ui.fragments.main.reducers.analytics.BlockedAppsLogFragment
 import neth.iecal.curbox.ui.fragments.main.reducers.analytics.IntentsLogFragment
-import neth.iecal.curbox.ui.fragments.main.reducers.anti_stimulants.grayscale.CreateGrayscaleGroupFragment
-import neth.iecal.curbox.ui.fragments.main.reducers.anti_stimulants.grayscale.GrayscaleFragment
 import neth.iecal.curbox.ui.fragments.main.reducers.anti_modifications.AntiModificationsFragment
 import neth.iecal.curbox.ui.fragments.main.reducers.anti_modifications.AntiModificationsGroupDetailsFragment
 import neth.iecal.curbox.ui.fragments.main.reducers.anti_modifications.CreateAntiModificationsGroupFragment
@@ -65,8 +63,6 @@ class FragmentActivity : AppCompatActivity() {
             AutoFocusFragment.FRAGMENT_ID,
             CreateAutoFocusGroupFragment.FRAGMENT_ID,
             neth.iecal.curbox.ui.fragments.main.reducers.anti_stimulants.reel_counter.ReelCounterFragment.FRAGMENT_ID,
-            GrayscaleFragment.FRAGMENT_ID,
-            CreateGrayscaleGroupFragment.FRAGMENT_ID,
                 ViewBlockerFragment.FRAGMENT_ID,
                 IntentsLogFragment.FRAGMENT_ID,
                 BlockedAppsLogFragment.FRAGMENT_ID,
@@ -93,8 +89,6 @@ class FragmentActivity : AppCompatActivity() {
                     AutoFocusFragment.FRAGMENT_ID -> AutoFocusFragment()
                     CreateAutoFocusGroupFragment.FRAGMENT_ID -> CreateAutoFocusGroupFragment()
                     neth.iecal.curbox.ui.fragments.main.reducers.anti_stimulants.reel_counter.ReelCounterFragment.FRAGMENT_ID -> neth.iecal.curbox.ui.fragments.main.reducers.anti_stimulants.reel_counter.ReelCounterFragment()
-                    GrayscaleFragment.FRAGMENT_ID -> GrayscaleFragment()
-                    CreateGrayscaleGroupFragment.FRAGMENT_ID -> CreateGrayscaleGroupFragment()
                     neth.iecal.curbox.ui.fragments.main.reducers.anti_stimulants.mindful_messages.MindfulMessagesFragment.FRAGMENT_ID -> neth.iecal.curbox.ui.fragments.main.reducers.anti_stimulants.mindful_messages.MindfulMessagesFragment()
                     IntentsLogFragment.FRAGMENT_ID -> IntentsLogFragment()
                     BlockedAppsLogFragment.FRAGMENT_ID -> BlockedAppsLogFragment()

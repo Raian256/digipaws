@@ -1,6 +1,5 @@
 package neth.iecal.curbox.ui.fragments.main.focus
 
-import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -16,7 +15,6 @@ import androidx.recyclerview.widget.LinearSnapHelper
 import androidx.recyclerview.widget.RecyclerView
 import kotlinx.coroutines.launch
 import neth.iecal.curbox.R
-import neth.iecal.curbox.blockers.FocusModeBlocker
 import neth.iecal.curbox.databinding.FragmentFocusBinding
 import neth.iecal.curbox.utils.TimeTools
 
@@ -105,18 +103,6 @@ class FocusFragment : Fragment() {
         }
         setupRuler()
         setupClicks()
-    }
-    override fun onResume() {
-        super.onResume()
-        viewLifecycleOwner.lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            val db = neth.iecal.curbox.data.db.AppDatabase.getInstance(requireContext())
-            val runningSessions = db.focusStatsDao().getRunningSessions()
-            if (runningSessions.isEmpty()) {
-                val intent = Intent(FocusModeBlocker.INTENT_ACTION_UNSUSPEND_ALL)
-                intent.setPackage(requireContext().packageName)
-                requireContext().sendBroadcast(intent)
-            }
-        }
     }
 
     private fun setupClicks() {

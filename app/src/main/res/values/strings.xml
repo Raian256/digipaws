@@ -229,8 +229,6 @@
     <string name="put_in_messages_and_counters_floating">Subtle on-screen cues to help you stay anchored in the present.</string>
     <string name="reel_counter">Reel Counter</string>
     <string name="track_the_number_of_reels_consumed">Track and analyze the number of short-form content consumed</string>
-    <string name="grayscale_filter">Grayscale Filter</string>
-    <string name="reduce_visual_stimulation">Reduce visual stimulation</string>
     <string name="system_diagnostics">System Diagnostics</string>
     <string name="backup_and_restore">Backup &amp; Restore</string>
     <string name="backup_and_restore_description">Save all your Curbox settings to a JSON file you can keep or use to restore on another device.</string>
@@ -348,11 +346,7 @@
     <string name="auto_focus_manage_on_screen_hint">Pause it from the Auto Focus screen</string>
     <string name="save_schedule">Save Schedule</string>
     <string name="track_the_number_of_short_videos">Track the number of short videos you scroll</string>
-    <string name="grayscale_filter_setup">Grayscale Filter Setup</string>
-    <string name="no_grayscale_groups_yet_create_one">No Grayscale Groups yet. Create one!</string>
     <string name="val_10_apps">10 Apps</string>
-    <string name="create_grayscale_group">Create Grayscale Group</string>
-    <string name="apps_to_greyscale">APPS TO GREYSCALE</string>
     <string name="val_25">25</string>
     <string name="val_15">15</string>
     <string name="val_30">30</string>

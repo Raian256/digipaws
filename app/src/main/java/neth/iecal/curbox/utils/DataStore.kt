@@ -97,10 +97,6 @@ class DataStoreManager(private val context: Context) {
         settingsDataStore.updateData { it.copy(isReelCounterOn = isActive) }
     }
 
-    suspend fun updateGrayscaleGroups(newGroups: List<neth.iecal.curbox.data.models.GrayscaleGroup>) {
-        settingsDataStore.updateData { it.copy(grayscaleGroups = newGroups) }
-    }
-
     suspend fun updateUsageTrackerIgnoredApps(newApps: List<String>) {
         settingsDataStore.updateData { it.copy(usageTrackerIgnoredApps = newApps) }
     }

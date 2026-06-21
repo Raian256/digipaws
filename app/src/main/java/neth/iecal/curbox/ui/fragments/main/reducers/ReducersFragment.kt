@@ -12,7 +12,6 @@ import neth.iecal.curbox.R
 import neth.iecal.curbox.ui.activity.FragmentActivity
 import neth.iecal.curbox.ui.activity.ManageEssentialsActivity
 import neth.iecal.curbox.ui.fragments.main.reducers.anti_modifications.AntiModificationsFragment
-import neth.iecal.curbox.ui.fragments.main.reducers.anti_stimulants.grayscale.GrayscaleFragment
 import neth.iecal.curbox.ui.fragments.main.reducers.anti_uninstall.AntiUninstallFragment
 import neth.iecal.curbox.ui.fragments.main.reducers.blockertools.appBlocker.AppBlockerGroupsFragment
 
@@ -45,9 +44,6 @@ class ReducersFragment : Fragment() {
 
         view.findViewById<MaterialCardView>(R.id.card_reel_counter)
             .setOnClickListener(open(neth.iecal.curbox.ui.fragments.main.reducers.anti_stimulants.reel_counter.ReelCounterFragment.FRAGMENT_ID))
-
-        view.findViewById<MaterialCardView>(R.id.card_grayscale)
-            .setOnClickListener(open(GrayscaleFragment.FRAGMENT_ID))
 
         view.findViewById<MaterialCardView>(R.id.card_intents)
             .setOnClickListener(open(neth.iecal.curbox.ui.fragments.main.reducers.anti_stimulants.mindful_messages.MindfulMessagesFragment.FRAGMENT_ID))

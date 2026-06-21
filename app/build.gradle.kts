@@ -116,10 +116,6 @@ dependencies {
 
     // QR Scanner & Generator
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
-    
-    // Shizuku dependecies
-    implementation (libs.api)
-    implementation (libs.provider)
 
     implementation(libs.gson)
 

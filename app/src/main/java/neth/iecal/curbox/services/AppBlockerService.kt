@@ -16,7 +16,6 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import neth.iecal.curbox.CrashLogger
-import neth.iecal.curbox.anti_stimulants.GrayScaleFilter
 import neth.iecal.curbox.blockers.AntiUninstallBlocker
 import neth.iecal.curbox.blockers.AppBlocker
 import neth.iecal.curbox.blockers.FocusModeBlocker
@@ -62,8 +61,6 @@ class AppBlockerService : BaseBlockingService() {
     }
 
 
-    private var grayScaleFilter = GrayScaleFilter()
-
     private val serviceScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     private val eventChannel = Channel<AccessibilityEvent>(Channel.CONFLATED) { droppedEvent ->
@@ -75,11 +72,6 @@ class AppBlockerService : BaseBlockingService() {
     override fun onCreate() {
         super.onCreate()
         crashLogger = CrashLogger(this)
-        try {
-            rikka.shizuku.ShizukuProvider.requestBinderForNonProviderProcess(this)
-        } catch (e: Exception) {
-            Log.e("Shizuku", "Failed to bind Shizuku in non-provider process", e)
-        }
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -88,7 +80,6 @@ class AppBlockerService : BaseBlockingService() {
 
         try {
             appBlocker.doAppBlockerCheck(event)
-            grayScaleFilter.doGrayscaleCheck(event)
             focusModeBlocker.doFocusModeCheck(event)
             antiUninstallBlocker.doAntiUninstallCheck(event)
         } catch (t: Throwable) {
@@ -138,14 +129,12 @@ class AppBlockerService : BaseBlockingService() {
         viewBlocker.setupBlocker(this)
         viewBlocker.setupElementPicker()
         pickerNotification = ElementPickerNotification(this)
-        grayScaleFilter.setup(this)
         antiUninstallBlocker.setupBlocker(this)
 
         focusModeBlocker.setupReceivers()
         appBlocker.setupReceivers()
         reelBlocker.setupReceivers()
         keywordBlocker.setupReceivers()
-        grayScaleFilter.setupReceivers()
         viewBlocker.setupReceivers()
 
         val pickerFilter = IntentFilter().apply {
@@ -181,7 +170,6 @@ class AppBlockerService : BaseBlockingService() {
             reelBlocker.removeReceivers()
             appBlocker.onDestroy()
             keywordBlocker.removeReceivers()
-            grayScaleFilter.unregisterReceivers()
             viewBlocker.removeReceivers()
             try { unregisterReceiver(pickerReceiver) } catch (_: Exception) {}
             try { unregisterReceiver(packageInstallReceiver) } catch (_: Exception) {}

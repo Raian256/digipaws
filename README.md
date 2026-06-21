@@ -54,8 +54,6 @@ substantial additions and reworks beyond upstream. It is licensed under
   apps* or *block everything except selected apps*. Supports manual sessions and
   **automatic scheduled** sessions (per-day intervals), optional do-not-disturb
   activation, exit cooldowns, and an exit ETA shown on the active session card.
-  When Shizuku is available, focus suspends apps at the package-manager level
-  rather than relying solely on foreground interception.
 - **Reel blocker.** Blocks short-form video feeds (Reels/Shorts/TikTok-style
   surfaces) by time schedule, usage limit, or a per-day **reel count**.
 - **Keyword blocker.** Blocks the screen when user-defined keywords appear,
@@ -74,8 +72,6 @@ substantial additions and reworks beyond upstream. It is licensed under
 
 ### Anti-stimulant ("make it boring") tools
 
-- **Grayscale.** Forces selected app groups into monochrome on a schedule, via
-  Shizuku display color-space control where available.
 - **Mindful messages.** Overlays a configurable reminder on selected apps, with
   placeholders for live session duration, today's app usage, and today's screen
   time.
@@ -149,7 +145,6 @@ hosting onboarding and the main reducer/usage/focus fragment tree.
 | `MediaNotifSilencer` | NotificationListenerService | Silences background audio of blocked apps (opt-in) |
 | `AdminReceiver` | DeviceAdminReceiver | Backs anti-uninstall |
 | `PackageInstallReceiver` | BroadcastReceiver (runtime-registered) | Auto-enrolls newly installed apps into opted-in groups |
-| Shizuku provider | optional | Privileged `pm suspend/unsuspend` and display color control |
 
 The app holds **no `INTERNET` permission.** Key permissions are accessibility
 (two services), `SYSTEM_ALERT_WINDOW` (overlays/warning screen),
@@ -200,7 +195,7 @@ app/src/main/java/neth/iecal/curbox/
 │   ├── models/         DataStore-backed config data classes
 │   └── db/             Room entities + DAOs
 ├── receivers/       device-admin + package-install receivers
-├── utils/           Shizuku runner, app-suspend helper, essential packages,
+├── utils/           essential packages,
 │   └── backup/         hashing, usage stats, permissions; backup section registry
 ├── ui/              activities, fragments (onboarding + main), overlays, widgets
 └── hardcoded/       built-in reel-app definitions
@@ -241,8 +236,6 @@ Upstream and its dependencies in turn credit:
 - [Usage Direct](https://codeberg.org/fynngodau/usageDirect) — app usage stats.
 - [Redd Focus](https://github.com/kasnder/redd-focus-android/) — basis of the
   view blocker.
-- [ShizuTools](https://github.com/legendsayantan/ShizuTools) — basis of the
-  Shizuku runner.
 - [MPAndroidChart](https://github.com/PhilJay/MPAndroidChart) — charts.
 
 ## License

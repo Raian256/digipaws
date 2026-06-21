@@ -28,9 +28,7 @@ import neth.iecal.curbox.data.models.GeoFenceMode
 import neth.iecal.curbox.services.BaseBlockingService
 import neth.iecal.curbox.services.MediaNotifSilencer
 import neth.iecal.curbox.ui.activity.WarningActivity
-import neth.iecal.curbox.utils.AppSuspendHelper
 import neth.iecal.curbox.utils.LocationProvider
-import neth.iecal.curbox.utils.ShizukuRunner
 import neth.iecal.curbox.utils.SystemOverlayDetector
 import neth.iecal.curbox.utils.TimeTools
 import neth.iecal.curbox.utils.TimerNotification
@@ -554,10 +552,6 @@ class AppBlocker() : BaseBlocker() {
         // Silence any background audio session up-front; press-home + warning
         // dialog don't stop a media session from playing on their own.
         requestAudioSilence(packageName)
-
-        if (AppSuspendHelper.isShizukuAvailable()) {
-            ShizukuRunner.executeCommand("am force-stop $packageName", object : ShizukuRunner.CommandResultListener {})
-        }
 
         // Use the strictness-merged config so the warning screen reflects
         // every group's constraints at once — not just whichever entry was

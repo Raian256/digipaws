@@ -103,20 +103,4 @@ object PermissionUtils {
                 isAccessibilityServiceEnabled(context, UsageTrackingService::class.java) &&
                 isDeviceAdminActive(context)
     }
-
-    fun isShizukuAvailable(): Boolean {
-        return try {
-            rikka.shizuku.Shizuku.pingBinder()
-        } catch (e: Exception) {
-            false
-        }
-    }
-
-    fun hasShizukuPermission(): Boolean {
-        return try {
-            rikka.shizuku.Shizuku.checkSelfPermission() == android.content.pm.PackageManager.PERMISSION_GRANTED
-        } catch (e: Exception) {
-            false
-        }
-    }
 }

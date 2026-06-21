@@ -36,15 +36,4 @@ class SetupShortcutViewModel(application: Application) : AndroidViewModel(applic
             getApplication<Application>().sendBroadcast(Intent(AppBlocker.INTENT_ACTION_REFRESH_APP_BLOCKER))
         }
     }
-
-    fun toggleGrayscaleGroup(groupId: String, isActive: Boolean) {
-        viewModelScope.launch {
-            val currentSettings = _settings.value ?: return@launch
-            val updatedGroups = currentSettings.grayscaleGroups.map {
-                if (it.groupId == groupId) it.copy(isActive = isActive) else it
-            }
-            dataStoreManager.updateGrayscaleGroups(updatedGroups)
-            getApplication<Application>().sendBroadcast(Intent("neth.iecal.curbox.ACTION_REFRESH_GRAYSCALE"))
-        }
-    }
 }

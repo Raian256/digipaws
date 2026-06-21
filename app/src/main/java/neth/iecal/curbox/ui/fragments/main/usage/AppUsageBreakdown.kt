@@ -28,7 +28,6 @@ import neth.iecal.curbox.databinding.FragmentAppUsageBreakdownBinding
 import neth.iecal.curbox.ui.activity.FragmentActivity
 import neth.iecal.curbox.ui.fragments.main.reducers.blockertools.appBlocker.CreateAppGroupFragment
 import neth.iecal.curbox.ui.fragments.main.reducers.blockertools.autofocus.CreateAutoFocusGroupFragment
-import neth.iecal.curbox.ui.fragments.main.reducers.anti_stimulants.grayscale.CreateGrayscaleGroupFragment
 import neth.iecal.curbox.utils.TimeTools
 
 class AppUsageBreakdown(private val stat: AllAppsUsageFragment.Stat) : Fragment() {
@@ -81,23 +80,6 @@ class AppUsageBreakdown(private val stat: AllAppsUsageFragment.Stat) : Fragment(
                     )
                 }
 
-                val matchedGrayscale = settings.grayscaleGroups.filter { it.packages.contains(stat.packageName) }
-                matchedGrayscale.forEach { group ->
-                    addShortcutCard(
-                        title = group.groupName,
-                        subtitle = "Grayscale",
-                        isActive = group.isActive,
-                        iconRes = R.drawable.ic_grayscale_aesthetic,
-                        onToggle = { active -> viewModel.toggleGrayscaleGroup(group.groupId, active) },
-                        onClick = {
-                            startActivity(Intent(requireContext(), FragmentActivity::class.java).apply {
-                                putExtra("fragment", CreateGrayscaleGroupFragment.FRAGMENT_ID)
-                                putExtra("group_id", group.groupId)
-                            })
-                        }
-                    )
-                }
-
                 val matchedAutoFocus = settings.autoFocusGroups.filter { it.packages.contains(stat.packageName) }
                 matchedAutoFocus.forEach { group ->
                     addShortcutCard(
@@ -118,14 +100,13 @@ class AppUsageBreakdown(private val stat: AllAppsUsageFragment.Stat) : Fragment(
         }
 
         binding.btnCreateNewRule.setOnClickListener {
-            val options = arrayOf("App Blocker", "Grayscale", "Auto Focus")
+            val options = arrayOf("App Blocker", "Auto Focus")
             MaterialAlertDialogBuilder(requireContext())
                 .setTitle("Create New Rule")
                 .setItems(options) { _, which ->
                     val fragmentId = when (which) {
                         0 -> CreateAppGroupFragment.FRAGMENT_ID
-                        1 -> CreateGrayscaleGroupFragment.FRAGMENT_ID
-                        2 -> CreateAutoFocusGroupFragment.FRAGMENT_ID
+                        1 -> CreateAutoFocusGroupFragment.FRAGMENT_ID
                         else -> return@setItems
                     }
                     startActivity(Intent(requireContext(), FragmentActivity::class.java).apply {
