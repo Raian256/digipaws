@@ -397,6 +397,11 @@
     <string name="send_notifications">Send Notifications</string>
     <string name="app_blocker_accessibility">App Blocker (Accessibility)</string>
     <string name="usage_tracker_accessibility">Usage Tracker (Accessibility)</string>
+    <string name="device_admin_access">Device Admin (Anti-Uninstall)</string>
+    <string name="device_admin_rationale">Curbox needs Device Admin so it cannot be easily uninstalled in a moment of weakness, protecting your commitment to your goals. You can revoke this at any time from within Curbox.</string>
+    <string name="device_admin_required_title">Device Admin Required</string>
+    <string name="device_admin_required_message">Curbox needs Device Admin permission to keep protecting you from impulsive uninstalls. Please re-enable it to continue.</string>
+    <string name="enable">Enable</string>
     <string name="do_you_want_to_restore_a">Do you want to restore a previously saved backup? You won\'t be allowed to restore later.</string>
     <string name="restore_backup">Restore Backup</string>
     <string name="enable_permissions">Enable Permissions</string>

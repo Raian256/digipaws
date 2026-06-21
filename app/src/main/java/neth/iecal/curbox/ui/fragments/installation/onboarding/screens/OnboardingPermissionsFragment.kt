@@ -222,6 +222,17 @@ class OnboardingPermissionsFragment : Fragment() {
             }
         }
 
+        binding.deviceAdminPermRoot.setOnClickListener {
+            if (neth.iecal.curbox.utils.PermissionUtils.isDeviceAdminActive(requireContext())) return@setOnClickListener
+            showExplanationDialog(
+                title = "Device Admin (Anti-Uninstall)",
+                rationale = "Curbox needs Device Admin so it cannot be easily uninstalled in a moment of weakness. This protects your commitment to your goals—you can always revoke it later from within Curbox.",
+                openSourceExplanation = "🛡️ You Stay in Control: Device Admin only guards against impulsive uninstalls. Because our code is fully public, you can verify it is never used to lock you out or control your device."
+            ) {
+                startActivity(PermissionUtils.buildDeviceAdminEnableIntent(requireContext()))
+            }
+        }
+
         binding.shizukuPermRoot.setOnClickListener {
             if (neth.iecal.curbox.utils.PermissionUtils.hasShizukuPermission()) return@setOnClickListener
             showExplanationDialog(
@@ -309,13 +320,15 @@ class OnboardingPermissionsFragment : Fragment() {
         val pkg = requireContext().packageName
         val svc1 = "$pkg/${AppBlockerService::class.java.name}"
         val svc2 = "$pkg/${UsageTrackingService::class.java.name}"
+        val admin = "$pkg/${neth.iecal.curbox.receivers.AdminReceiver::class.java.name}"
 
         val command = """
             appops set $pkg SYSTEM_ALERT_WINDOW allow
             appops set $pkg GET_USAGE_STATS allow
             pm grant $pkg android.permission.POST_NOTIFICATIONS
             cmd notification allow_dnd $pkg
-            
+            dpm set-active-admin $admin
+
             CURRENT_ACC_SVCS=${'$'}(settings get secure enabled_accessibility_services)
             if [ "${'$'}CURRENT_ACC_SVCS" = "null" ] || [ -z "${'$'}CURRENT_ACC_SVCS" ]; then
                 settings put secure enabled_accessibility_services "$svc1:$svc2"
@@ -362,6 +375,7 @@ class OnboardingPermissionsFragment : Fragment() {
         val hasDnd = (requireContext().getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager).isNotificationPolicyAccessGranted
         val hasBlocker = neth.iecal.curbox.utils.PermissionUtils.isAccessibilityServiceEnabled(requireContext(), AppBlockerService::class.java)
         val hasTracker = neth.iecal.curbox.utils.PermissionUtils.isAccessibilityServiceEnabled(requireContext(), UsageTrackingService::class.java)
+        val hasAdmin = neth.iecal.curbox.utils.PermissionUtils.isDeviceAdminActive(requireContext())
         val hasShizuku = neth.iecal.curbox.utils.PermissionUtils.hasShizukuPermission()
         
         if (neth.iecal.curbox.utils.PermissionUtils.isShizukuAvailable()) {
@@ -376,6 +390,7 @@ class OnboardingPermissionsFragment : Fragment() {
         setPermissionIcon(hasDnd, binding.dndPermIcon)
         setPermissionIcon(hasBlocker, binding.blockerAccPermIcon)
         setPermissionIcon(hasTracker, binding.trackerAccPermIcon)
+        setPermissionIcon(hasAdmin, binding.deviceAdminPermIcon)
         setPermissionIcon(hasShizuku, binding.shizukuPermIcon)
 
         // Enforce Sequence
@@ -402,11 +417,15 @@ class OnboardingPermissionsFragment : Fragment() {
         binding.trackerAccPermRoot.isEnabled = canDoTracker && !hasTracker
         binding.trackerAccPermRoot.alpha = if (canDoTracker) (if (hasTracker) 0.5f else 1.0f) else 0.3f
 
-        val canDoShizuku = canDoTracker && hasTracker
+        val canDoAdmin = canDoTracker && hasTracker
+        binding.deviceAdminPermRoot.isEnabled = canDoAdmin && !hasAdmin
+        binding.deviceAdminPermRoot.alpha = if (canDoAdmin) (if (hasAdmin) 0.5f else 1.0f) else 0.3f
+
+        val canDoShizuku = canDoAdmin && hasAdmin
         binding.shizukuPermRoot.isEnabled = canDoShizuku && !hasShizuku
         binding.shizukuPermRoot.alpha = if (canDoShizuku) (if (hasShizuku) 0.5f else 1.0f) else 0.3f
 
-        val allGranted = hasOverlay && hasUsageStats && hasNotif && hasDnd && hasBlocker && hasTracker
+        val allGranted = hasOverlay && hasUsageStats && hasNotif && hasDnd && hasBlocker && hasTracker && hasAdmin
         binding.btnAction.isEnabled = allGranted
         if (allGranted) {
             binding.btnAction.text = "Finish Onboarding"

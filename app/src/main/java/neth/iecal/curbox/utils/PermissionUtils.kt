@@ -2,6 +2,7 @@ package neth.iecal.curbox.utils
 
 import android.Manifest
 import android.app.AppOpsManager
+import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -12,6 +13,8 @@ import android.provider.Settings
 import android.text.TextUtils
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat.startActivity
+import neth.iecal.curbox.R
+import neth.iecal.curbox.receivers.AdminReceiver
 import neth.iecal.curbox.services.AppBlockerService
 import neth.iecal.curbox.services.UsageTrackingService
 
@@ -76,12 +79,29 @@ object PermissionUtils {
         return false
     }
 
+    fun isDeviceAdminActive(context: Context): Boolean {
+        val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        return dpm.isAdminActive(ComponentName(context, AdminReceiver::class.java))
+    }
+
+    fun buildDeviceAdminEnableIntent(context: Context): Intent {
+        val component = ComponentName(context, AdminReceiver::class.java)
+        return Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
+            putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, component)
+            putExtra(
+                DevicePolicyManager.EXTRA_ADD_EXPLANATION,
+                context.getString(R.string.device_admin_rationale)
+            )
+        }
+    }
+
     fun hasAllRequiredPermissions(context: Context): Boolean {
         return hasOverlayPermission(context) &&
                 hasUsageStatsPermission(context) &&
                 isNotificationPermissionGiven(context) &&
                 isAccessibilityServiceEnabled(context, AppBlockerService::class.java) &&
-                isAccessibilityServiceEnabled(context, UsageTrackingService::class.java)
+                isAccessibilityServiceEnabled(context, UsageTrackingService::class.java) &&
+                isDeviceAdminActive(context)
     }
 
     fun isShizukuAvailable(): Boolean {

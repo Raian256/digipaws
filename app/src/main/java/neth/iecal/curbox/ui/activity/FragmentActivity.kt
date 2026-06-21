@@ -5,7 +5,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import neth.iecal.curbox.R
+import neth.iecal.curbox.utils.PermissionUtils
 import neth.iecal.curbox.ui.fragments.installation.AccessibilityGuide
 import neth.iecal.curbox.ui.fragments.installation.onboarding.OnboardingFragment
 import neth.iecal.curbox.ui.fragments.main.focus.FocusFragment
@@ -32,6 +34,8 @@ import neth.iecal.curbox.ui.fragments.main.reducers.blockertools.keywordBlocker.
 import neth.iecal.curbox.ui.fragments.main.reducers.blockertools.viewBlocker.ViewBlockerFragment
 
 class FragmentActivity : AppCompatActivity() {
+
+    private var deviceAdminDialog: androidx.appcompat.app.AlertDialog? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -139,5 +143,41 @@ class FragmentActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        maybePromptDeviceAdmin()
+    }
+
+    /**
+     * Once onboarding is complete, Device Admin is required for anti-uninstall to
+     * keep working. If the user has revoked it, reprompt them on every foreground
+     * until it is re-enabled.
+     */
+    private fun maybePromptDeviceAdmin() {
+        val sharedPreferences = getSharedPreferences("AppPreferences", android.content.Context.MODE_PRIVATE)
+        if (!sharedPreferences.getBoolean("isFirstLaunchComplete", false)) return
+        if (PermissionUtils.isDeviceAdminActive(this)) {
+            deviceAdminDialog?.dismiss()
+            deviceAdminDialog = null
+            return
+        }
+        if (deviceAdminDialog?.isShowing == true) return
+
+        deviceAdminDialog = MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.device_admin_required_title)
+            .setMessage(R.string.device_admin_required_message)
+            .setCancelable(false)
+            .setPositiveButton(R.string.enable) { _, _ ->
+                startActivity(PermissionUtils.buildDeviceAdminEnableIntent(this))
+            }
+            .show()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        deviceAdminDialog?.dismiss()
+        deviceAdminDialog = null
     }
 }
