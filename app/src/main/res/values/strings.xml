@@ -353,39 +353,57 @@
     <string name="val_60">60</string>
     <string name="val_120">120</string>
     <string name="val_0000">00:00</string>
-    <string name="your_phone_is_designed_to_be">Your phone is designed to be addictive.</string>
-    <string name="you_arent_lazy_and_your_willpower">You aren’t lazy, and your willpower isn\'t broken. You\'re just fighting algorithms built by thousands of engineers to keep you scrolling.</string>
-    <string name="lets_level_the_playing_field">Let\'s level the playing field.</string>
-    <string name="lets_look_at_the_numbers">Let\'s look at the numbers.</string>
-    <string name="how_many_hours_a_day_do">How many hours a day do you think you spend on your phone?</string>
-    <string name="val_4_hrs">4 hrs</string>
-    <string name="over_a_year_that_is_60">Over a year, that is 60 full days of your life staring at a screen.</string>
-    <string name="i_want_my_time_back">I want my time back.</string>
-    <string name="what_are_you_making_room_for">What are you making room for?</string>
-    <string name="mindless_scrolling_leaves_us_with_brain">Mindless scrolling leaves us with brain fog instead of actual rest. What would you rather be doing with those recovered hours?</string>
-    <string name="focusing_on_deep_workstudying">Focusing on deep work/studying</string>
-    <string name="learning_a_new_skill_like_guitar">Learning a new skill (like guitar or coding)</string>
-    <string name="being_present_with_friends_and_family">Being present with friends and family</string>
-    <string name="getting_actual_restful_sleep">Getting actual, restful sleep</string>
-    <string name="commit_to_these_goals">Commit to these goals.</string>
-    <string name="willpower_isnt_enough_we_use_friction">Willpower isn\'t enough. We use friction.</string>
-    <string name="we_dont_just_block_your_apps">We don\'t just block your apps. We interrupt your muscle memory. When you mindlessly tap Instagram or YouTube, we’ll make you pause, take a breath, and actively choose if it\'s worth it.</string>
-    <string name="make_me_pause">Make me pause.</string>
-    <string name="choose_your_first_target">Choose your first target.</string>
-    <string name="dont_try_to_change_everything_at">Don\'t try to change everything at once. Pick one app that drains your energy the most.</string>
-    <string name="instagram">Instagram</string>
-    <string name="tiktok">TikTok</string>
-    <string name="youtube">YouTube</string>
-    <string name="reddit">Reddit</string>
-    <string name="other_select_later">Other (Select later)</string>
-    <string name="daily_limit">Daily Limit</string>
-    <string name="val_15_min">15 min</string>
-    <string name="val_30_min">30 min</string>
-    <string name="val_1_hour">1 hour</string>
-    <string name="val_2_hours">2 hours</string>
-    <string name="add_friction_to_this_app">Add friction to this app.</string>
-    <string name="give_us_the_keys">Give us the keys.</string>
-    <string name="to_create_friction_and_give_you">To create friction and give you your time back, we need deep system access. We never read your messages or track browsing.</string>
+    <!-- Onboarding: continue button shared by info pages -->
+    <string name="onboarding_continue">Continue</string>
+
+    <!-- Onboarding page 1: goals and scope -->
+    <string name="onboarding_about_title">What Curbox is</string>
+    <string name="onboarding_about_body"><![CDATA[
+Curbox makes compulsive phone use harder. It uses Android\'s accessibility framework to step in when you open a distracting app or surface, and pairs that with controls you can lock so you can\'t casually undo them later.
+<br/><br/>
+<b>Goals</b>
+<br/>• <b>Add friction to distraction.</b> Make distracting apps and feeds harder to reach than the impulse to open them.
+<br/>• <b>Resist impulse.</b> Lock settings behind delays, cooldowns, or passwords you set while motivated.
+<br/>• <b>Stay private and offline.</b> No network permission; everything stays on your device.
+<br/>• <b>Stay configurable.</b> Every blocker, schedule, and limit is yours to define. There is no built-in \"correct\" usage.
+<br/><br/>
+<b>Scope</b>
+<br/>• Android 8.0+ only. Single-user and on-device — no account, sync, server, or telemetry.
+<br/>• Not parental control or MDM. The locks are for self-binding by a cooperating user, not for fighting a determined third party.
+]]></string>
+
+    <!-- Onboarding page 2: the blockers -->
+    <string name="onboarding_blockers_title">Blockers</string>
+    <string name="onboarding_blockers_body"><![CDATA[
+Blocking is organised into groups you define. The available tools:
+<br/><br/>
+• <b>App blocker.</b> Block apps by group, by a daily usage limit or a time schedule. An optional geofence can make a group apply only inside or outside an area.
+<br/>• <b>Focus mode.</b> Sessions that block selected apps, or block everything <i>except</i> selected apps (a whitelist). Manual or scheduled, with optional Do Not Disturb and exit cooldowns.
+<br/>• <b>Auto-focus.</b> Focus sessions that start and end automatically on a per-day schedule.
+<br/>• <b>Reel blocker.</b> Block short-form feeds (Reels / Shorts / TikTok) by schedule, usage limit, or a daily reel count.
+<br/>• <b>Keyword &amp; view blocker.</b> Block the screen when chosen keywords appear, or cover and dismiss specific on-screen elements such as the like button or comments.
+<br/>• <b>Browser blocker.</b> Intercept keywords and URLs inside browsers.
+<br/>• <b>Make it boring.</b> Overlay a mindful reminder on chosen apps, or just count the reels you scroll each day.
+]]></string>
+
+    <!-- Onboarding page 3: self-binding and privacy -->
+    <string name="onboarding_selfbind_title">Staying with it</string>
+    <string name="onboarding_selfbind_body"><![CDATA[
+The point of Curbox is to hold even when you\'d rather it didn\'t. These controls back that up:
+<br/><br/>
+• <b>Warning screen.</b> The screen shown over a blocked app is configurable: a delay, a cooldown, a limited number of proceeds, or a task — scan a QR code, type a sentence, state your intent — before it lets you through.
+<br/>• <b>Anti-uninstall.</b> Blocks the routes to uninstalling Curbox or disabling its services while active.
+<br/>• <b>Anti-modifications.</b> Locks specific configs — schedules, keywords, rules, the essential-apps list — so they can\'t be weakened without an unlock. Tightening is always free; loosening is gated.
+<br/>• <b>Essential apps.</b> A never-blocked allowlist (launcher, keyboard, system UI, Curbox itself, plus your own) so blocking can never lock you out of your phone.
+<br/><br/>
+All three locks share the same unlock modes: <b>password</b>, <b>timed</b> (locked until a chosen time), or <b>cooldown</b> (a wait that must elapse after you ask to remove them).
+<br/><br/>
+<b>Privacy.</b> Curbox has no internet permission. Nothing it observes leaves your phone.
+]]></string>
+
+    <!-- Onboarding permissions header -->
+    <string name="onboarding_permissions_title">Permissions</string>
+    <string name="onboarding_permissions_subtitle">Curbox needs these to detect and block apps. Grant them in order.</string>
     <string name="display_over_other_apps">Display over other apps</string>
     <string name="usage_access">Usage Access</string>
     <string name="send_notifications">Send Notifications</string>

@@ -25,7 +25,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="32dp"
-                android:text="@string/give_us_the_keys"
+                android:text="@string/onboarding_permissions_title"
                 android:textColor="?attr/colorOnSurface"
                 android:textStyle="bold" />
 
@@ -35,7 +35,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:gravity="center"
-                android:text="@string/to_create_friction_and_give_you"
+                android:text="@string/onboarding_permissions_subtitle"
                 android:textColor="?attr/colorOnSurfaceVariant" />
 
             <!-- 1. Overlay Perm -->

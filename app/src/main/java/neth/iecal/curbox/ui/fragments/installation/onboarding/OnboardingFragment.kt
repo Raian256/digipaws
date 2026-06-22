@@ -7,15 +7,10 @@ import android.view.ViewGroup
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.activityViewModels
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import neth.iecal.curbox.R
 import neth.iecal.curbox.databinding.FragmentOnboardingBinding
-import neth.iecal.curbox.ui.fragments.installation.onboarding.screens.EmpathyFragment
-import neth.iecal.curbox.ui.fragments.installation.onboarding.screens.ScreenTimeEstimateFragment
-import neth.iecal.curbox.ui.fragments.installation.onboarding.screens.CoreValuesFragment
-import neth.iecal.curbox.ui.fragments.installation.onboarding.screens.FrictionExplanationFragment
-import neth.iecal.curbox.ui.fragments.installation.onboarding.screens.TargetSelectionFragment
+import neth.iecal.curbox.ui.fragments.installation.onboarding.screens.OnboardingInfoFragment
 import neth.iecal.curbox.ui.fragments.installation.onboarding.screens.OnboardingPermissionsFragment
 
 class OnboardingFragment : Fragment() {
@@ -26,9 +21,6 @@ class OnboardingFragment : Fragment() {
 
     private var _binding: FragmentOnboardingBinding? = null
     private val binding get() = _binding!!
-    
-    // Use activityViewModels so children fragments can share this ViewModel
-    private val viewModel: OnboardingViewModel by activityViewModels()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -65,16 +57,23 @@ class OnboardingFragment : Fragment() {
     }
 
     private inner class OnboardingPagerAdapter(fragment: Fragment) : FragmentStateAdapter(fragment) {
-        override fun getItemCount(): Int = 6
+        override fun getItemCount(): Int = 4
 
         override fun createFragment(position: Int): Fragment {
             return when (position) {
-                0 -> EmpathyFragment()
-                1 -> ScreenTimeEstimateFragment()
-                2 -> CoreValuesFragment()
-                3 -> FrictionExplanationFragment()
-                4 -> TargetSelectionFragment()
-                5 -> OnboardingPermissionsFragment()
+                0 -> OnboardingInfoFragment.newInstance(
+                    R.string.onboarding_about_title,
+                    R.string.onboarding_about_body
+                )
+                1 -> OnboardingInfoFragment.newInstance(
+                    R.string.onboarding_blockers_title,
+                    R.string.onboarding_blockers_body
+                )
+                2 -> OnboardingInfoFragment.newInstance(
+                    R.string.onboarding_selfbind_title,
+                    R.string.onboarding_selfbind_body
+                )
+                3 -> OnboardingPermissionsFragment()
                 else -> throw IllegalArgumentException("Invalid position $position")
             }
         }

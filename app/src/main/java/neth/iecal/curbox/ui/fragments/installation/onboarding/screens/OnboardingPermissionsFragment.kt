@@ -14,35 +14,23 @@ import android.widget.ImageView
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.activityViewModels
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.gson.Gson
 import neth.iecal.curbox.R
 import neth.iecal.curbox.databinding.FragmentOnboardingPermissionsBinding
-import neth.iecal.curbox.data.models.AppBlockerWarningScreenConfig
-import neth.iecal.curbox.data.models.AppBlockingType
-import neth.iecal.curbox.data.models.AppGroup
-import neth.iecal.curbox.data.models.AppUsageConfig
 import neth.iecal.curbox.services.AppBlockerService
 import neth.iecal.curbox.services.UsageTrackingService
 import neth.iecal.curbox.ui.activity.FragmentActivity
-import neth.iecal.curbox.ui.fragments.installation.onboarding.OnboardingViewModel
-import neth.iecal.curbox.ui.fragments.main.reducers.blockertools.appBlocker.AppBlockerSettingViewModel
 import neth.iecal.curbox.ui.fragments.main.usage.AllAppsUsageFragment
 import neth.iecal.curbox.utils.PermissionUtils
 import neth.iecal.curbox.utils.backup.BackupManager
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import android.widget.Toast
-import java.util.UUID
 
 class OnboardingPermissionsFragment : Fragment() {
 
     private var _binding: FragmentOnboardingPermissionsBinding? = null
     private val binding get() = _binding!!
-
-    private val onboardingViewModel: OnboardingViewModel by activityViewModels()
-    private val appBlockerViewModel: AppBlockerSettingViewModel by activityViewModels()
 
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
@@ -87,36 +75,6 @@ class OnboardingPermissionsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         binding.btnAction.setOnClickListener {
-            // Persist onboarding app block group
-            val targetApp = onboardingViewModel.targetAppPackage.value
-            val limit = onboardingViewModel.dailyLimitMinutes.value ?: 30L
-            
-            val packageMap = mapOf(
-                "Instagram" to "com.instagram.android",
-                "TikTok" to "com.zhiliaoapp.musically",
-                "YouTube" to "com.google.android.youtube",
-                "Reddit" to "com.reddit.frontpage"
-            )
-            
-            val pkg = packageMap[targetApp]
-            if (pkg != null) {
-                val usageConfig = AppUsageConfig(
-                    isDailyUniform = true,
-                    uniformLimit = limit,
-                    dailyLimits = LongArray(7) { limit }
-                )
-                val newGroup = AppGroup(
-                    id = UUID.randomUUID().toString(),
-                    name = "$targetApp Limits",
-                    selectedPackages = listOf(pkg),
-                    blockingType = AppBlockingType.Usage,
-                    isActive = true,
-                    setting = Gson().toJson(usageConfig),
-                    warningScreenConfig = AppBlockerWarningScreenConfig()
-                )
-                appBlockerViewModel.addGroup(newGroup)
-            }
-
             val sharedPreferences =
                 requireContext().getSharedPreferences("AppPreferences", Context.MODE_PRIVATE)
             sharedPreferences.edit().putBoolean("isFirstLaunchComplete", true).apply()
@@ -131,8 +89,7 @@ class OnboardingPermissionsFragment : Fragment() {
             if (Settings.canDrawOverlays(requireContext())) return@setOnClickListener
             showExplanationDialog(
                 title = "Screen Overlay",
-                rationale = "To break your scrolling habit, we need permission to show a 'pause' screen over distracting apps when you open them.",
-                openSourceExplanation = "\uD83D\uDEE1\uFE0F Open Source: Think of our app like a restaurant with an 'open kitchen'. Our entire codebase is public. Anyone can look through it to verify we aren't doing anything sneaky. There are no closed doors here."
+                rationale = "Curbox needs permission to draw over other apps so it can show the warning/pause screen over a blocked app when you open it."
             ) {
                 val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
                     data = Uri.parse("package:${requireContext().packageName}")
@@ -145,8 +102,7 @@ class OnboardingPermissionsFragment : Fragment() {
             if (neth.iecal.curbox.utils.PermissionUtils.hasUsageStatsPermission(requireContext())) return@setOnClickListener
             showExplanationDialog(
                 title = "Usage Access",
-                rationale = "Curbox needs to know which app you are currently using so we can intervene exactly when you open a distracting app.",
-                openSourceExplanation = "\uD83D\uDEE1\uFE0F Verified by the Community: Because our 'kitchen' is open, independent developers and privacy advocates can inspect our work. If we ever tried to track you, the community would find out immediately."
+                rationale = "Curbox uses usage access to tell which app is in the foreground so it can act when you open a blocked app."
             ) {
                 startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
             }
@@ -157,8 +113,7 @@ class OnboardingPermissionsFragment : Fragment() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 showExplanationDialog(
                     title = "Notifications",
-                    rationale = "We need this to keep the application running reliably in the background and to gently remind you of your goals.",
-                    openSourceExplanation = "\uD83D\uDEE1\uFE0F Not a Data Broker: Most apps hide their code because their true business is harvesting your data. Since our code is 100% public, you can verify yourself that there is no hidden code sending your personal information away."
+                    rationale = "Curbox needs notification permission to run reliably in the background and to post its status and reminders."
                 ) {
                     notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
@@ -171,8 +126,7 @@ class OnboardingPermissionsFragment : Fragment() {
             
             showExplanationDialog(
                 title = "Do Not Disturb",
-                rationale = "Curbox needs permission to control Do Not Disturb to automatically hide distractions when you are focusing.",
-                openSourceExplanation = "\uD83D\uDEE1\uFE0F We respect your peace: Curbox uses this permission to mute distractions exactly when you want."
+                rationale = "Curbox needs Do Not Disturb access to mute distractions automatically during focus sessions."
             ) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     val intent = Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
@@ -185,8 +139,7 @@ class OnboardingPermissionsFragment : Fragment() {
             if (neth.iecal.curbox.utils.PermissionUtils.isAccessibilityServiceEnabled(requireContext(), AppBlockerService::class.java)) return@setOnClickListener
             showExplanationDialog(
                 title = "App Blocker (Accessibility API)",
-                rationale = "Curbox uses the Android AccessibilityService API to detect when you launch a target app and draw the blocker screen. This is crucial for the core app blocking to function.",
-                openSourceExplanation = "\uD83D\uDEE1\uFE0F Transparency for Deep Access: This is a powerful permission, which is why being open source is so critical. You don't have to just trust our word that we only block apps—the global community has reviewed our public code to guarantee it."
+                rationale = "Curbox uses the accessibility service to detect when a blocked app is launched and to draw the blocker screen. This is required for app blocking to work."
             ) {
                 PermissionUtils.openAccessibilityServiceScreen(requireContext(),AppBlockerService::class.java)
             }
@@ -196,8 +149,7 @@ class OnboardingPermissionsFragment : Fragment() {
             if (neth.iecal.curbox.utils.PermissionUtils.isAccessibilityServiceEnabled(requireContext(), UsageTrackingService::class.java)) return@setOnClickListener
             showExplanationDialog(
                 title = "Usage Tracker (Accessibility API)",
-                rationale = "Curbox uses the Android AccessibilityService API to accurately measure your screen time and reel scrolling so we can provide you with honest reality-check statistics.",
-                openSourceExplanation = "\uD83D\uDEE1\uFE0F Built for You, Not Advertisers: Curbox is a community-driven project built to help people, not to sell data. Our open source nature proves that our only goal is giving you your time back. Your data is yours alone."
+                rationale = "Curbox uses the accessibility service to measure screen time and reel scrolling for the usage statistics."
             ) {
                 PermissionUtils.openAccessibilityServiceScreen(requireContext(),
                     UsageTrackingService::class.java)
@@ -208,8 +160,7 @@ class OnboardingPermissionsFragment : Fragment() {
             if (neth.iecal.curbox.utils.PermissionUtils.isDeviceAdminActive(requireContext())) return@setOnClickListener
             showExplanationDialog(
                 title = "Device Admin (Anti-Uninstall)",
-                rationale = "Curbox needs Device Admin so it cannot be easily uninstalled in a moment of weakness. This protects your commitment to your goals—you can always revoke it later from within Curbox.",
-                openSourceExplanation = "🛡️ You Stay in Control: Device Admin only guards against impulsive uninstalls. Because our code is fully public, you can verify it is never used to lock you out or control your device."
+                rationale = "Device Admin lets Curbox resist being uninstalled while anti-uninstall is active. You can revoke it later from within Curbox."
             ) {
                 startActivity(PermissionUtils.buildDeviceAdminEnableIntent(requireContext()))
             }
@@ -243,12 +194,10 @@ class OnboardingPermissionsFragment : Fragment() {
         _binding = null
     }
 
-    private fun showExplanationDialog(title: String, rationale: String, openSourceExplanation: String, onProceed: () -> Unit) {
-        val privacy = "\n\n\uD83D\uDD12 100% Private: We do not collect, send, or store any of your data on our servers. All processing stays strictly on your phone.\n\n"
-        
+    private fun showExplanationDialog(title: String, rationale: String, onProceed: () -> Unit) {
         MaterialAlertDialogBuilder(requireContext())
             .setTitle(title)
-            .setMessage(rationale + privacy + openSourceExplanation)
+            .setMessage(rationale)
             .setPositiveButton("Proceed") { _, _ -> onProceed() }
             .setNegativeButton("Cancel", null)
             .show()
