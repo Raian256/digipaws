@@ -5,12 +5,10 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
 import androidx.fragment.app.Fragment
 import com.google.android.material.card.MaterialCardView
 import neth.iecal.curbox.R
 import neth.iecal.curbox.ui.activity.FragmentActivity
-import neth.iecal.curbox.ui.activity.ManageEssentialsActivity
 import neth.iecal.curbox.ui.fragments.main.reducers.anti_modifications.AntiModificationsFragment
 import neth.iecal.curbox.ui.fragments.main.reducers.anti_uninstall.AntiUninstallFragment
 import neth.iecal.curbox.ui.fragments.main.reducers.blockertools.appBlocker.AppBlockerGroupsFragment
@@ -62,10 +60,6 @@ class ReducersFragment : Fragment() {
 
         view.findViewById<MaterialCardView>(R.id.card_blocked_apps_log)
             .setOnClickListener(open(neth.iecal.curbox.ui.fragments.main.reducers.analytics.BlockedAppsLogFragment.FRAGMENT_ID))
-
-        view.findViewById<Button>(R.id.btn_manage_essentials).setOnClickListener {
-            startActivity(Intent(requireContext(), ManageEssentialsActivity::class.java))
-        }
 
         return view
     }

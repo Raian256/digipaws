@@ -23,6 +23,7 @@ import java.io.File
 import neth.iecal.curbox.blockers.AppBlocker
 import neth.iecal.curbox.data.models.AntiModificationsConfig
 import neth.iecal.curbox.databinding.FragmentInfoBinding
+import neth.iecal.curbox.ui.activity.ManageEssentialsActivity
 import neth.iecal.curbox.ui.fragments.main.reducers.anti_modifications.AntiModificationsGate
 import neth.iecal.curbox.utils.DataStoreManager
 import neth.iecal.curbox.utils.backup.BackupManager
@@ -138,6 +139,10 @@ class InfoFragment : Fragment() {
     }
 
     private fun setupClickListeners() {
+        binding.btnManageEssentials.setOnClickListener {
+            startActivity(Intent(requireContext(), ManageEssentialsActivity::class.java))
+        }
+
         binding.btnActionCrashLogs.setOnClickListener {
             showCrashLogs()
         }
