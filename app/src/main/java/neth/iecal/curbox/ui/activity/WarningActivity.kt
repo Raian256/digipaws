@@ -367,44 +367,30 @@ val warningScreenConfig = Gson().fromJson<AppBlockerWarningScreenConfig>(
         config: AppBlockerWarningScreenConfig,
         isProceedLimitExceeded: Boolean
     ): String {
-        val lines = mutableListOf<String>()
-
-        lines += when (mode) {
-            Constants.WARNING_SCREEN_MODE_APP_BLOCKER ->
-                "You opened $targetLabel, which you've chosen to restrict."
-            Constants.WARNING_SCREEN_MODE_VIEW_BLOCKER ->
-                "You reached a short-form video feed you've chosen to restrict."
-            else -> "This was opened in a restricted context."
+        if (config.isProceedDisabled) {
+            return "You've chosen to restrict this. Bypassing is disabled — close this and step away."
+        }
+        if (isProceedLimitExceeded) {
+            // The remaining-time message is shown separately in proceedSeconds.
+            return "You've chosen to restrict this."
         }
 
-        when {
-            config.isProceedDisabled ->
-                lines += "Bypassing is disabled here — close this and step away."
-            isProceedLimitExceeded -> {
-                // The remaining-time message is shown separately in proceedSeconds.
+        val detail = StringBuilder(
+            if (config.isDynamicIntervalSettingAllowed) {
+                "Choose below how long to unlock for."
+            } else {
+                "Proceeding unlocks access for ${config.timeInterval / 60000} min."
             }
-            config.isDynamicIntervalSettingAllowed ->
-                lines += "If you proceed, choose below how long to unlock for."
-            else ->
-                lines += "Proceeding unlocks access for ${config.timeInterval / 60000} min."
-        }
+        )
 
-        if (!config.isProceedDisabled && !isProceedLimitExceeded) {
-            if (config.isIntentRequirementEnabled) {
-                lines += "You must first state why you need access; the wait only starts after that."
-            }
-            if (config.isQrUnlockRequirementEnabled) {
-                lines += "You must scan your unlock QR/barcode to continue."
-            }
-            if (config.isTypingRequirementEnabled) {
-                lines += "You must type the required sentence exactly to continue."
-            }
-            if (config.proceedLimitEnabled) {
-                lines += "Limited to ${config.allowedProceeds} unlocks per ${config.proceedsTimeWindowMn} min."
-            }
-        }
+        val requirements = mutableListOf<String>()
+        if (config.isIntentRequirementEnabled) requirements += "state why you need access (the wait starts after)"
+        if (config.isQrUnlockRequirementEnabled) requirements += "scan your unlock QR/barcode"
+        if (config.isTypingRequirementEnabled) requirements += "type the required sentence exactly"
+        if (requirements.isNotEmpty()) detail.append(" First, ").append(requirements.joinToString("; ")).append(".")
+        if (config.proceedLimitEnabled) detail.append(" Limited to ${config.allowedProceeds} unlocks per ${config.proceedsTimeWindowMn} min.")
 
-        return lines.joinToString("\n\n")
+        return detail.toString()
     }
 
     private fun sendRefreshRequest(id: String, action: String, time: Int) {
