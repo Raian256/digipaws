@@ -28,9 +28,8 @@ import androidx.core.content.ContextCompat
  * until the app is reopened — a clean bypass of every geofenced block. By
  * instead requesting a single fix every [POLL_INTERVAL_MS] and releasing the
  * providers the moment it lands, the indicator only blinks briefly each cycle,
- * shrinking that attack surface (and cutting battery use). It cannot be removed
- * entirely without Device Owner provisioning — see
- * [PermissionUtils.applyUserControlLock].
+ * shrinking that attack surface (and cutting battery use). It cannot be
+ * suppressed entirely by an unprivileged app.
  */
 class LocationProvider(private val context: Context) {
 
@@ -106,26 +105,51 @@ class LocationProvider(private val context: Context) {
         }
     }
 
+    private fun onFix(loc: Location) {
+        if (lastLocation == null || loc.time >= lastLocation!!.time) {
+            lastLocation = loc
+            onUpdate?.invoke()
+        }
+        // Once we have an accurate-enough fix, stop any still-pending providers
+        // immediately so the indicator goes dark right away rather than
+        // lingering for the slowest provider (usually GPS). Gated on accuracy so
+        // a coarse early fix doesn't cut GPS short — accuracy isn't sacrificed.
+        if (loc.hasAccuracy() && loc.accuracy <= GOOD_ACCURACY_M) {
+            clearPendingFixes()
+        }
+    }
+
     /**
-     * Take one fix from each enabled provider, then let the providers go idle.
-     * Listeners still pending from a previous cycle are cleared first so we
-     * never accumulate live subscriptions (and thus never hold the indicator
-     * open between samples).
+     * Refresh [lastLocation] while keeping the location indicator lit for as
+     * short a time as possible.
+     *
+     *  - Cache-first: if a provider already holds a fix that's both recent
+     *    ([CACHE_FRESH_MS]) and accurate ([GOOD_ACCURACY_M]) we reuse it and
+     *    start no active request at all, so this sample triggers no indicator.
+     *  - Otherwise take a single fix from each enabled provider (GPS for
+     *    accuracy, network as a fast fallback), tearing the rest down via
+     *    [onFix] the moment an accurate fix lands, and via [FIX_TIMEOUT_MS] if
+     *    none does.
      */
     private fun sampleOnce() {
         val lm = locationManager ?: return
         if (!hasPermission()) return
         clearPendingFixes()
 
+        seedFromCache(lm)
+        lastLocation?.let { cached ->
+            val fresh = System.currentTimeMillis() - cached.time < CACHE_FRESH_MS
+            val accurate = cached.hasAccuracy() && cached.accuracy <= GOOD_ACCURACY_M
+            if (fresh && accurate) {
+                onUpdate?.invoke()
+                return
+            }
+        }
+
         try {
             listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER).forEach { provider ->
                 if (!lm.isProviderEnabled(provider)) return@forEach
-                val l = LocationListener { loc ->
-                    if (lastLocation == null || loc.time >= lastLocation!!.time) {
-                        lastLocation = loc
-                        onUpdate?.invoke()
-                    }
-                }
+                val l = LocationListener { loc -> onFix(loc) }
                 lm.requestSingleUpdate(provider, l, Looper.getMainLooper())
                 pendingFixes.add(l)
             }
@@ -173,5 +197,22 @@ class LocationProvider(private val context: Context) {
 
         /** Max time to wait for a provider to deliver before giving up on a sample. */
         private const val FIX_TIMEOUT_MS = 30_000L
+
+        /**
+         * Reuse an existing fix (no active request, no indicator) when it is
+         * younger than this. Above [POLL_INTERVAL_MS], so a fix is reused across
+         * several polls: we only take a new active fix — lighting the indicator
+         * — once nothing (our own sampling or any other app's location use) has
+         * produced a fix in this window. Trades up to this much geofence
+         * staleness for far fewer indicator appearances.
+         */
+        private const val CACHE_FRESH_MS = 10 * 60_000L
+
+        /**
+         * Horizontal accuracy (metres) at or below which a fix is treated as
+         * good enough to (a) reuse from cache and (b) stop the remaining
+         * providers early. Comfortably tighter than typical geofence radii.
+         */
+        private const val GOOD_ACCURACY_M = 50f
     }
 }

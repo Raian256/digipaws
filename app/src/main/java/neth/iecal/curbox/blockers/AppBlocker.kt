@@ -36,6 +36,7 @@ import neth.iecal.curbox.utils.UsageStatsHelper
 import neth.iecal.curbox.utils.getEssentialPackages
 import java.util.Calendar
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.random.Random
 
 class AppBlocker() : BaseBlocker() {
 
@@ -60,6 +61,9 @@ class AppBlocker() : BaseBlocker() {
          */
         const val INTENT_ACTION_REFRESH_GEOFENCE_LOCATION = "neth.iecal.curbox.refresh.geofence.location"
         private const val TARGET_EVENTS_MASK = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
+
+        /** Upper bound of the random delay applied to a manual geofence refresh. */
+        private const val GEOFENCE_REFRESH_MAX_DELAY_MS = 3 * 60_000L
     }
 
     private lateinit var prefs: SharedPreferences
@@ -108,6 +112,9 @@ class AppBlocker() : BaseBlocker() {
      * and is refreshed alongside the group lists.
      */
     private var blockWhenLocationUnavailable = false
+
+    /** True while a manual geofence refresh is pending its randomised delay. */
+    private var geofenceRefreshScheduled = false
 
 
     // responsible to trigger a recheck for what app user is currently using even when no event is received. Used in putting the usage recheck logic into
@@ -576,10 +583,26 @@ class AppBlocker() : BaseBlocker() {
             when (intent.action) {
                 INTENT_ACTION_REFRESH_APP_BLOCKER -> setupAppBlocker(service)
                 INTENT_ACTION_REFRESH_APP_BLOCKER_COOLDOWN -> handlePutCooldownIntentBroadcast(intent)
-                INTENT_ACTION_REFRESH_GEOFENCE_LOCATION -> {
-                    if (::locationProvider.isInitialized) locationProvider.requestSingleUpdate()
-                }
+                INTENT_ACTION_REFRESH_GEOFENCE_LOCATION -> scheduleGeofenceRefresh()
             }
         }
+    }
+
+    /**
+     * Friction against summoning the location indicator on demand: instead of
+     * firing a fix immediately (which lights the status-bar location dot right
+     * away, letting the user tap it to force-stop the app), schedule it at a
+     * random moment within the next [GEOFENCE_REFRESH_MAX_DELAY_MS]. Repeat
+     * presses while one is pending are ignored, so the timing can't be re-rolled
+     * by spamming the button.
+     */
+    private fun scheduleGeofenceRefresh() {
+        if (!::locationProvider.isInitialized || geofenceRefreshScheduled) return
+        geofenceRefreshScheduled = true
+        val delay = Random.nextLong(GEOFENCE_REFRESH_MAX_DELAY_MS)
+        handler.postDelayed({
+            geofenceRefreshScheduled = false
+            locationProvider.requestSingleUpdate()
+        }, delay)
     }
 }

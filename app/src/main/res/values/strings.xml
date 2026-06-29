@@ -36,9 +36,9 @@
 
     <!-- Manual location refresh (Info screen) -->
     <string name="refresh_location_title">Refresh location</string>
-    <string name="refresh_location_description">Geofenced blockers rely on your current location. If a blocker isn\'t activating where it should, force a fresh location update here.</string>
+    <string name="refresh_location_description">Geofenced blockers rely on your current location. If a blocker isn\'t activating where it should, request a fresh update here — it\'s applied at a random moment within a few minutes.</string>
     <string name="refresh_location_button">Update current location</string>
-    <string name="refresh_location_requested">Refreshing current location…</string>
+    <string name="refresh_location_requested">Location refresh scheduled — it\'ll update within the next few minutes.</string>
     <string name="focus_mode">Focus Mode</string>
     <string name="add">Add</string>
     <string name="save">Save</string>
