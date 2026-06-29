@@ -34,6 +34,7 @@ import neth.iecal.curbox.utils.TimeTools
 import neth.iecal.curbox.utils.TimerNotification
 import neth.iecal.curbox.utils.UsageStatsHelper
 import neth.iecal.curbox.utils.getEssentialPackages
+import java.time.LocalDate
 import java.util.Calendar
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.random.Random
@@ -80,7 +81,7 @@ class AppBlocker() : BaseBlocker() {
      * package-keyed map. Now every group's rule is evaluated, and the
      * strictest one wins.
      */
-    private data class UsageEntry(val config: AppUsageConfig, val warning: AppBlockerWarningScreenConfig, val killBackgroundAudio: Boolean, val geoFence: GeoFenceConfig)
+    private data class UsageEntry(val config: AppUsageConfig, val warning: AppBlockerWarningScreenConfig, val killBackgroundAudio: Boolean, val countBackgroundAudio: Boolean, val geoFence: GeoFenceConfig)
     private data class TimeEntry(val config: AppTimeConfig, val warning: AppBlockerWarningScreenConfig, val killBackgroundAudio: Boolean, val geoFence: GeoFenceConfig)
 
     private var blockedAppsList = HashMap<String, MutableList<UsageEntry>>()
@@ -92,6 +93,19 @@ class AppBlocker() : BaseBlocker() {
      * or the user editing the group to drop killBackgroundAudio).
      */
     private val audioSilencedPackages = mutableSetOf<String>()
+
+    /**
+     * Background-audio millis accrued today per package, reported by
+     * [MediaNotifSilencer] over [INTENT_ACTION_AUDIO_TOTALS_FROM_TRACKER]. Added
+     * to UsageStats foreground time for groups that opted into
+     * `countBackgroundAudio`. [backgroundAudioDay] guards against consuming a
+     * stale snapshot left over from a previous day.
+     */
+    private val backgroundAudioMillisToday = HashMap<String, Long>()
+    private var backgroundAudioDay: Long = LocalDate.now().toEpochDay()
+
+    /** Last foreground package broadcast to the tracker; dedupes the broadcasts. */
+    private var lastForegroundPkg = ""
 
     private lateinit var usageStats : UsageStatsHelper
     private var lastPackage = ""
@@ -131,7 +145,13 @@ class AppBlocker() : BaseBlocker() {
 
         val packageName = event.packageName?.toString() ?: return
 
-        if (lastPackage == packageName || essentialPackages.contains(packageName)) return
+        if (lastPackage == packageName || essentialPackages.contains(packageName)) {
+            // Even for essential apps / the launcher (which we never block), the
+            // foreground app has changed — tell the audio tracker so a tracked
+            // app that just left the foreground starts accruing background time.
+            updateForegroundPackage(packageName)
+            return
+        }
 
         // Same overlay guard as FocusModeBlocker: a system-signed dialog
         // (permission prompt, installer confirm, Pixel battery-saver "Use
@@ -139,6 +159,7 @@ class AppBlocker() : BaseBlocker() {
         if (SystemOverlayDetector.isSystemOverlay(service, event)) return
 
         lastPackage = packageName
+        updateForegroundPackage(packageName)
 
         evaluatePackage(packageName)
     }
@@ -186,11 +207,13 @@ class AppBlocker() : BaseBlocker() {
         // time across all covering groups.
         val usageEntries = blockedAppsList[packageName]?.filter { isActiveByLocation(it.geoFence) }
         if (!usageEntries.isNullOrEmpty()) {
-            val currentUsage = usageStats.getForegroundStatsByRelativeDay(0)
-                .firstOrNull { it.packageName == packageName }?.totalTime ?: 0L
+            val foregroundUsage = foregroundMillisToday(packageName)
+            val audioUsage = audioMillisToday(packageName)
             var minRemaining = Long.MAX_VALUE
             for (entry in usageEntries) {
                 val usageLimitMillis = getUsageLimitForToday(entry.config) * 60_000L
+                // Add measured background-audio time only for groups that opted in.
+                val currentUsage = foregroundUsage + (if (entry.countBackgroundAudio) audioUsage else 0L)
                 val remainingUsage = usageLimitMillis - currentUsage
                 if (remainingUsage <= 0) {
                     notificationManager.stopTimer()
@@ -217,6 +240,7 @@ class AppBlocker() : BaseBlocker() {
             addAction(INTENT_ACTION_REFRESH_APP_BLOCKER)
             addAction(INTENT_ACTION_REFRESH_APP_BLOCKER_COOLDOWN)
             addAction(INTENT_ACTION_REFRESH_GEOFENCE_LOCATION)
+            addAction(MediaNotifSilencer.ACTION_AUDIO_TOTALS)
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             service.registerReceiver(refreshReceiver, filter, RECEIVER_EXPORTED)
@@ -257,7 +281,7 @@ class AppBlocker() : BaseBlocker() {
                     if (!group.isActive) return@forEach
                     if (group.blockingType == AppBlockingType.Usage) {
                         val appUsageConfig = Gson().fromJson(group.setting, AppUsageConfig::class.java)
-                        val entry = UsageEntry(appUsageConfig, group.warningScreenConfig, group.killBackgroundAudio, group.geoFence ?: GeoFenceConfig())
+                        val entry = UsageEntry(appUsageConfig, group.warningScreenConfig, group.killBackgroundAudio, group.countBackgroundAudio, group.geoFence ?: GeoFenceConfig())
                         group.selectedPackages.forEach { pkg ->
                             blockedAppsList.getOrPut(pkg) { mutableListOf() }.add(entry)
                         }
@@ -271,12 +295,21 @@ class AppBlocker() : BaseBlocker() {
                 }
                 Log.d("loaded blocked apps",blockedAppsList.toString())
 
+                // Tell the tracker which packages' background audio to measure,
+                // and pull the latest totals so a freshly (re)loaded blocker
+                // syncs with whatever has already accrued today.
+                val trackedAudioPkgs = blockedAppsList
+                    .filterValues { list -> list.any { it.countBackgroundAudio } }
+                    .keys.toSet()
+                MediaNotifSilencer.sendSetTrackedPackages(service, trackedAudioPkgs)
+                MediaNotifSilencer.requestAudioTotals(service)
+
                 // Only spin up location updates while a geofence is actually in
                 // use; otherwise keep the GPS stack untouched.
                 if (anyGeoFenceActive()) locationProvider.start() else locationProvider.stop()
 
-                // Drop silences for packages whose audio-killing groups went away.
-                val stillCovered = audioSilencedPackages.filter { hasAudioKilling(it) }.toSet()
+                // Drop silences for packages whose audio-killing / audio-counting groups went away.
+                val stillCovered = audioSilencedPackages.filter { shouldSilenceWhenBlocked(it) }.toSet()
                 (audioSilencedPackages - stillCovered).forEach { releaseAudioSilence(it) }
             }
         }
@@ -302,6 +335,25 @@ class AppBlocker() : BaseBlocker() {
     }
 
     /**
+     * Fresh background-audio totals arrived from the tracker. Replace our cached
+     * snapshot (guarding the day stamp), persist it as a cold-start fallback,
+     * and immediately enforce any background overage.
+     */
+    private fun handleAudioTotalsBroadcast(intent: Intent) {
+        val day = intent.getLongExtra(MediaNotifSilencer.EXTRA_DAY, LocalDate.now().toEpochDay())
+        val pkgs = intent.getStringArrayExtra(MediaNotifSilencer.EXTRA_PACKAGES) ?: emptyArray()
+        val millis = intent.getLongArrayExtra(MediaNotifSilencer.EXTRA_MILLIS) ?: LongArray(0)
+
+        backgroundAudioDay = day
+        backgroundAudioMillisToday.clear()
+        for (i in pkgs.indices) {
+            backgroundAudioMillisToday[pkgs[i]] = millis.getOrElse(i) { 0L }
+        }
+        persistAudioTotals()
+        enforceBackgroundAudioLimits()
+    }
+
+    /**
      * True if any active group covering [pkg] opted into killBackgroundAudio.
      */
     private fun hasAudioKilling(pkg: String): Boolean {
@@ -311,12 +363,58 @@ class AppBlocker() : BaseBlocker() {
     }
 
     /**
+     * Whether [pkg]'s media should be paused when it is blocked. True if any
+     * group opts into killBackgroundAudio, OR if any group counts background
+     * audio toward its limit — in the latter case stopping playback is how the
+     * limit is actually enforced once the budget is spent.
+     */
+    private fun shouldSilenceWhenBlocked(pkg: String): Boolean {
+        return hasAudioKilling(pkg) || blockedAppsList[pkg]?.any { it.countBackgroundAudio } == true
+    }
+
+    /** Today's UsageStats foreground time for [pkg], in millis. */
+    private fun foregroundMillisToday(pkg: String): Long {
+        return usageStats.getForegroundStatsByRelativeDay(0)
+            .firstOrNull { it.packageName == pkg }?.totalTime ?: 0L
+    }
+
+    /** Today's measured background-audio time for [pkg], or 0 if the snapshot is stale. */
+    private fun audioMillisToday(pkg: String): Long {
+        if (backgroundAudioDay != LocalDate.now().toEpochDay()) return 0L
+        return backgroundAudioMillisToday[pkg] ?: 0L
+    }
+
+    private fun updateForegroundPackage(pkg: String) {
+        if (pkg == lastForegroundPkg) return
+        lastForegroundPkg = pkg
+        MediaNotifSilencer.sendSetForegroundPackage(service, pkg)
+    }
+
+    /**
+     * Driven by fresh totals from the tracker: for every package whose
+     * count-enabled limit is now exceeded, pause its (background) playback. This
+     * is the screen-off / other-app enforcement path, where no accessibility
+     * event would otherwise fire. Releases flow through [evaluatePackage] when
+     * the user next interacts within budget, so we only ever tighten here.
+     */
+    private fun enforceBackgroundAudioLimits() {
+        for (pkg in backgroundAudioMillisToday.keys) {
+            val entries = blockedAppsList[pkg]?.filter { it.countBackgroundAudio && isActiveByLocation(it.geoFence) }
+            if (entries.isNullOrEmpty()) continue
+            if (pkg == lastForegroundPkg) continue // foreground use is handled by the live timer
+            val used = foregroundMillisToday(pkg) + audioMillisToday(pkg)
+            val overBudget = entries.any { used >= getUsageLimitForToday(it.config) * 60_000L }
+            if (overBudget) requestAudioSilence(pkg)
+        }
+    }
+
+    /**
      * Tell the listener to pause+dismiss the package's media. Safe to call
      * repeatedly — the listener treats it as a re-poke (handles apps that
      * re-post media controls after the first dismissal).
      */
     private fun requestAudioSilence(pkg: String) {
-        if (!hasAudioKilling(pkg)) return
+        if (!shouldSilenceWhenBlocked(pkg)) return
         audioSilencedPackages.add(pkg)
         MediaNotifSilencer.sendSilence(service, pkg)
     }
@@ -391,6 +489,33 @@ class AppBlocker() : BaseBlocker() {
             if (endTime > System.currentTimeMillis()) {
                 cooldownAppsList[packageName] = endTime
             }
+        }
+        loadPersistedAudioTotals()
+    }
+
+    /**
+     * Cold-start fallback for [backgroundAudioMillisToday]: the tracker also
+     * re-broadcasts on its own (and we request it on setup), but reading our own
+     * last snapshot avoids a window where the budget looks empty before the
+     * first broadcast lands. Discarded if it belongs to a previous day.
+     */
+    private fun loadPersistedAudioTotals() {
+        val savedDay = prefs.getLong("audio_day", LocalDate.now().toEpochDay())
+        backgroundAudioDay = savedDay
+        backgroundAudioMillisToday.clear()
+        if (savedDay != LocalDate.now().toEpochDay()) return
+        val keys = prefs.getStringSet("audio_keys", setOf()) ?: setOf()
+        keys.forEach { pkg ->
+            val v = prefs.getLong("audio_$pkg", 0L)
+            if (v > 0L) backgroundAudioMillisToday[pkg] = v
+        }
+    }
+
+    private fun persistAudioTotals() {
+        prefs.edit {
+            putLong("audio_day", backgroundAudioDay)
+            putStringSet("audio_keys", backgroundAudioMillisToday.keys)
+            backgroundAudioMillisToday.forEach { (pkg, v) -> putLong("audio_$pkg", v) }
         }
     }
 
@@ -527,7 +652,7 @@ class AppBlocker() : BaseBlocker() {
                     removeCooldownFrom(coolPackage)
                     showWarningScreen(coolPackage)
                     lastPackage = ""
-                } else if (hasAudioKilling(coolPackage)) {
+                } else if (shouldSilenceWhenBlocked(coolPackage)) {
                     // App's window expired or its usage budget ran out while
                     // it's playing in the background. We can't render a
                     // warning here, but we can drop its media session + notif
@@ -584,6 +709,7 @@ class AppBlocker() : BaseBlocker() {
                 INTENT_ACTION_REFRESH_APP_BLOCKER -> setupAppBlocker(service)
                 INTENT_ACTION_REFRESH_APP_BLOCKER_COOLDOWN -> handlePutCooldownIntentBroadcast(intent)
                 INTENT_ACTION_REFRESH_GEOFENCE_LOCATION -> scheduleGeofenceRefresh()
+                MediaNotifSilencer.ACTION_AUDIO_TOTALS -> handleAudioTotalsBroadcast(intent)
             }
         }
     }

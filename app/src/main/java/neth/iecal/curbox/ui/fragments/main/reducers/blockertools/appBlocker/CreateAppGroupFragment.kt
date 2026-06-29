@@ -106,6 +106,7 @@ class CreateAppGroupFragment : Fragment() {
                         viewModel.geoFenceConfig = group.geoFence ?: neth.iecal.curbox.data.models.GeoFenceConfig()
                         binding.switchAutoAddNewApps.isChecked = group.autoAddNewApps
                         binding.switchKillBackgroundAudio.isChecked = group.killBackgroundAudio
+                        binding.switchCountBackgroundAudio.isChecked = group.countBackgroundAudio
 
                         binding.toolbar.menu.clear()
                         val deleteItem = binding.toolbar.menu.add(0, 1001, 0, "Delete")
@@ -180,6 +181,25 @@ class CreateAppGroupFragment : Fragment() {
             }
         }
 
+        binding.switchCountBackgroundAudio.setOnCheckedChangeListener { _, isChecked ->
+            // Same hard requirement as kill-background-audio: the listener is what
+            // measures playback time, so without notification access this is a
+            // no-op. Bounce to settings; don't auto-uncheck (it takes effect once
+            // the listener is granted).
+            if (isChecked && !MediaNotifSilencer.isEnabled(requireContext())) {
+                Toast.makeText(
+                    requireContext(),
+                    getString(R.string.kill_background_audio_needs_listener),
+                    Toast.LENGTH_LONG
+                ).show()
+                try {
+                    startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                } catch (_: Exception) {
+                    startActivity(Intent(Settings.ACTION_SETTINGS))
+                }
+            }
+        }
+
         binding.fabSaveGroup.setOnClickListener {
             saveGroup()
         }
@@ -221,6 +241,7 @@ class CreateAppGroupFragment : Fragment() {
             warningScreenConfig = viewModel.warningScrnConfig,
             autoAddNewApps = binding.switchAutoAddNewApps.isChecked,
             killBackgroundAudio = binding.switchKillBackgroundAudio.isChecked,
+            countBackgroundAudio = binding.switchCountBackgroundAudio.isChecked,
             geoFence = viewModel.geoFenceConfig,
         )
 

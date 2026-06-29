@@ -12,6 +12,15 @@ data class AppGroup(
     val autoAddNewApps: Boolean = false,
     val killBackgroundAudio: Boolean = false,
     /**
+     * For Usage-type groups: also count time the app spends playing audio in the
+     * background (screen off, or another app foregrounded) toward its daily
+     * usage limit. Foreground time alone (from UsageStatsManager) misses music
+     * that keeps playing while the app isn't on screen. Ignored for Timed
+     * groups. Like [killBackgroundAudio], requires notification-listener access
+     * (the listener measures playback via active media sessions).
+     */
+    val countBackgroundAudio: Boolean = false,
+    /**
      * Optional geolocation activation gate. When [GeoFenceConfig.enabled] is
      * false (the default), the group is location-agnostic and behaves as it
      * always has.
