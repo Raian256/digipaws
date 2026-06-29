@@ -78,19 +78,6 @@ class AppBlockerSettingViewModel(application: Application) : AndroidViewModel(ap
         }
     }
 
-    fun updateBlockGeofencedWhenLocationUnavailable(value: Boolean) {
-        viewModelScope.launch {
-            dataStoreManager.updateBlockGeofencedWhenLocationUnavailable(value)
-            requestAppBlockerRefresh()
-        }
-    }
-
-    fun updateRestrictNewGeofencing(value: Boolean) {
-        viewModelScope.launch {
-            dataStoreManager.updateRestrictNewGeofencing(value)
-        }
-    }
-
     fun updateGroupActiveState(index: Int, isActive: Boolean) {
         viewModelScope.launch {
             val currentSettings = dataStoreManager.settings.first()

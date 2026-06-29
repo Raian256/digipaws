@@ -13,18 +13,31 @@ import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.io.File
 import neth.iecal.curbox.blockers.AppBlocker
+import neth.iecal.curbox.data.models.AntiModificationsConfig
 import neth.iecal.curbox.databinding.FragmentInfoBinding
+import neth.iecal.curbox.ui.fragments.main.reducers.anti_modifications.AntiModificationsGate
+import neth.iecal.curbox.utils.DataStoreManager
 import neth.iecal.curbox.utils.backup.BackupManager
 
 class InfoFragment : Fragment() {
 
     private var _binding: FragmentInfoBinding? = null
     private val binding get() = _binding!!
+
+    private val dataStoreManager by lazy { DataStoreManager(requireContext().applicationContext) }
+    private var antiMods = AntiModificationsConfig()
+
+    /** True while the matching toggle is held on by an Anti-Modifications group. */
+    private var locationFallbackLocked = false
+    private var restrictGeofencingLocked = false
 
     private val exportPicker: ActivityResultLauncher<Intent> =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -48,7 +61,72 @@ class InfoFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         setupClickListeners()
+        setupGeofencingToggles()
         showBuildInfo()
+    }
+
+    /**
+     * Global geofence toggles. Each reflects the current setting and, when an
+     * Anti-Modifications group holds it, refuses changes with a snackbar instead
+     * of applying them — mirroring how the per-group switches are gated.
+     */
+    private fun setupGeofencingToggles() {
+        rebindLocationFallbackListener()
+        rebindRestrictGeofencingListener()
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                dataStoreManager.settings.collectLatest { settings ->
+                    antiMods = settings.antiModificationsConfig
+
+                    locationFallbackLocked = AntiModificationsGate.isGeofenceFailModeLocked(antiMods)
+                    binding.switchLocationFallback.setOnCheckedChangeListener(null)
+                    binding.switchLocationFallback.isChecked =
+                        settings.blockGeofencedWhenLocationUnavailable
+                    binding.switchLocationFallback.alpha = if (locationFallbackLocked) 0.5f else 1f
+                    rebindLocationFallbackListener()
+
+                    restrictGeofencingLocked =
+                        AntiModificationsGate.isRestrictGeofencingLocked(antiMods)
+                    binding.switchRestrictGeofencing.setOnCheckedChangeListener(null)
+                    binding.switchRestrictGeofencing.isChecked = settings.restrictNewGeofencing
+                    binding.switchRestrictGeofencing.alpha =
+                        if (restrictGeofencingLocked) 0.5f else 1f
+                    rebindRestrictGeofencingListener()
+                }
+            }
+        }
+    }
+
+    private fun rebindLocationFallbackListener() {
+        binding.switchLocationFallback.setOnCheckedChangeListener { buttonView, isChecked ->
+            if (locationFallbackLocked) {
+                buttonView.setOnCheckedChangeListener(null)
+                buttonView.isChecked = !isChecked
+                AntiModificationsGate.refuseWithSnackbar(buttonView)
+                rebindLocationFallbackListener()
+                return@setOnCheckedChangeListener
+            }
+            viewLifecycleOwner.lifecycleScope.launch {
+                dataStoreManager.updateBlockGeofencedWhenLocationUnavailable(isChecked)
+                requireContext().sendBroadcast(Intent(AppBlocker.INTENT_ACTION_REFRESH_APP_BLOCKER))
+            }
+        }
+    }
+
+    private fun rebindRestrictGeofencingListener() {
+        binding.switchRestrictGeofencing.setOnCheckedChangeListener { buttonView, isChecked ->
+            if (restrictGeofencingLocked) {
+                buttonView.setOnCheckedChangeListener(null)
+                buttonView.isChecked = !isChecked
+                AntiModificationsGate.refuseWithSnackbar(buttonView)
+                rebindRestrictGeofencingListener()
+                return@setOnCheckedChangeListener
+            }
+            viewLifecycleOwner.lifecycleScope.launch {
+                dataStoreManager.updateRestrictNewGeofencing(isChecked)
+            }
+        }
     }
 
     private fun showBuildInfo() {

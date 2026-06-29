@@ -28,6 +28,9 @@
     <string name="location_activation_invalid_radius">Enter a radius greater than 0 metres.</string>
     <string name="location_activation_background_hint">For the geofence to work while the app runs in the background, set location access to \"Allow all the time\".</string>
 
+    <!-- Geofencing settings card (Settings page) -->
+    <string name="geofencing_section_title">Geofencing</string>
+
     <!-- Global geofence fallback when location is unavailable -->
     <string name="location_unavailable_block_title">Block when location is unavailable</string>
     <string name="location_unavailable_block_subtitle">When the device location can\'t be read, keep geofenced groups blocking instead of letting them through.</string>
