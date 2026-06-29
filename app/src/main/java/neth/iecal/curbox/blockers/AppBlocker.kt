@@ -721,9 +721,14 @@ class AppBlocker() : BaseBlocker() {
      * random moment within the next [GEOFENCE_REFRESH_MAX_DELAY_MS]. Repeat
      * presses while one is pending are ignored, so the timing can't be re-rolled
      * by spamming the button.
+     *
+     * Skips sampling entirely when no active group actually opts into a geofence:
+     * with nothing to evaluate there is no reason to fire a fix (and light the
+     * location indicator) at all.
      */
     private fun scheduleGeofenceRefresh() {
         if (!::locationProvider.isInitialized || geofenceRefreshScheduled) return
+        if (!anyGeoFenceActive()) return
         geofenceRefreshScheduled = true
         val delay = Random.nextLong(GEOFENCE_REFRESH_MAX_DELAY_MS)
         handler.postDelayed({
