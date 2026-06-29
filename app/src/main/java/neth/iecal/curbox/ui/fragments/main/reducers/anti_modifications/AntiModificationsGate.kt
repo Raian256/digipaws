@@ -40,6 +40,9 @@ object AntiModificationsGate {
     fun isGeofenceFailModeLocked(config: AntiModificationsConfig) =
         config.isGeofenceFailModeLocked()
 
+    fun isRestrictGeofencingLocked(config: AntiModificationsConfig) =
+        config.isRestrictGeofencingLocked()
+
     fun hasAnyLockedKeyword(config: AntiModificationsConfig) =
         config.hasAnyLockedKeyword()
 

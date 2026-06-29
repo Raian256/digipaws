@@ -59,6 +59,16 @@
                 android:layout_height="wrap_content" />
         </LinearLayout>
 
+        <TextView
+            android:id="@+id/tv_geofence_locked_hint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="@string/restrict_geofencing_locked_hint"
+            android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+            android:textColor="?attr/colorError"
+            android:visibility="gone" />
+
         <LinearLayout
             android:id="@+id/geofence_options_container"
             android:layout_width="match_parent"

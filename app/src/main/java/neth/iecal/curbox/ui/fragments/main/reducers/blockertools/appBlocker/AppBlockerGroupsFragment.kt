@@ -39,9 +39,13 @@ class AppBlockerGroupsFragment : Fragment() {
     private lateinit var fabAddGroup: FloatingActionButton
     private lateinit var toolbar: MaterialToolbar
     private lateinit var switchLocationFallback: MaterialSwitch
+    private lateinit var switchRestrictGeofencing: MaterialSwitch
 
     /** True while the global location-fallback toggle is held by an Anti-Modifications group. */
     private var locationFallbackLocked = false
+
+    /** True while the "lock geofencing" toggle is held by an Anti-Modifications group. */
+    private var restrictGeofencingLocked = false
 
     private val viewModel: AppBlockerSettingViewModel by activityViewModels()
     private val dataStoreManager by lazy { DataStoreManager(requireContext().applicationContext) }
@@ -58,6 +62,7 @@ class AppBlockerGroupsFragment : Fragment() {
         fabAddGroup = view.findViewById(R.id.fab_add_group)
         toolbar = view.findViewById(R.id.toolbar)
         switchLocationFallback = view.findViewById(R.id.switch_location_fallback)
+        switchRestrictGeofencing = view.findViewById(R.id.switch_restrict_geofencing)
 
         toolbar.setNavigationOnClickListener {
             requireActivity().finish()
@@ -97,6 +102,7 @@ class AppBlockerGroupsFragment : Fragment() {
         // refused while an Anti-Modifications group holds it, mirroring the
         // per-group active switch above.
         rebindLocationFallbackListener()
+        rebindRestrictGeofencingListener()
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -109,9 +115,30 @@ class AppBlockerGroupsFragment : Fragment() {
                     switchLocationFallback.isChecked = settings.blockGeofencedWhenLocationUnavailable
                     switchLocationFallback.alpha = if (locationFallbackLocked) 0.5f else 1f
                     rebindLocationFallbackListener()
+
+                    restrictGeofencingLocked =
+                        AntiModificationsGate.isRestrictGeofencingLocked(antiMods)
+                    switchRestrictGeofencing.setOnCheckedChangeListener(null)
+                    switchRestrictGeofencing.isChecked = settings.restrictNewGeofencing
+                    switchRestrictGeofencing.alpha = if (restrictGeofencingLocked) 0.5f else 1f
+                    rebindRestrictGeofencingListener()
+
                     rvGroups.adapter?.notifyDataSetChanged()
                 }
             }
+        }
+    }
+
+    private fun rebindRestrictGeofencingListener() {
+        switchRestrictGeofencing.setOnCheckedChangeListener { buttonView, isChecked ->
+            if (restrictGeofencingLocked) {
+                buttonView.setOnCheckedChangeListener(null)
+                buttonView.isChecked = !isChecked
+                AntiModificationsGate.refuseWithSnackbar(buttonView)
+                rebindRestrictGeofencingListener()
+                return@setOnCheckedChangeListener
+            }
+            viewModel.updateRestrictNewGeofencing(isChecked)
         }
     }
 

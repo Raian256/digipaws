@@ -33,6 +33,13 @@
     <string name="location_unavailable_block_subtitle">When the device location can\'t be read, keep geofenced groups blocking instead of letting them through.</string>
     <string name="anti_modifications_section_geofence_failmode">Location-unavailable fallback</string>
     <string name="anti_modifications_geofence_failmode_item_label">Block-when-location-unavailable setting</string>
+    <string name="anti_modifications_section_restrict_geofencing">Geofencing lock</string>
+    <string name="anti_modifications_restrict_geofencing_item_label">Lock-geofencing setting</string>
+
+    <!-- Restrict turning geofencing on for new groups -->
+    <string name="restrict_geofencing_title">Lock geofencing</string>
+    <string name="restrict_geofencing_subtitle">Stop geofencing from being turned on for any new group. Groups that already use it keep working and stay editable.</string>
+    <string name="restrict_geofencing_locked_hint">Geofencing is locked. It can\'t be turned on for new groups while this is enabled in App blocker settings.</string>
 
     <!-- Manual location refresh (Info screen) -->
     <string name="refresh_location_title">Refresh location</string>

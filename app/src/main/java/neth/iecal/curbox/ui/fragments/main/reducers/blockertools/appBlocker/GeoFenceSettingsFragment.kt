@@ -14,13 +14,17 @@ import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.lifecycleScope
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import neth.iecal.curbox.R
 import neth.iecal.curbox.data.models.GeoFenceConfig
 import neth.iecal.curbox.data.models.GeoFenceMode
 import neth.iecal.curbox.data.models.GeoFencePoint
 import neth.iecal.curbox.databinding.FragmentAppBlockerGeofenceSettingsBinding
 import neth.iecal.curbox.databinding.ItemGeofencePointBinding
+import neth.iecal.curbox.utils.DataStoreManager
 import neth.iecal.curbox.utils.LocationProvider
 
 /**
@@ -44,6 +48,16 @@ class GeoFenceSettingsFragment : BottomSheetDialogFragment() {
     private val viewModel: AppBlockerSettingViewModel by activityViewModels()
 
     private var locationProvider: LocationProvider? = null
+
+    private val dataStoreManager by lazy { DataStoreManager(requireContext().applicationContext) }
+
+    /**
+     * True once the global "lock geofencing" setting is on AND this group didn't
+     * already have geofencing enabled. In that state the enable switch is held
+     * off: a group that's already geofenced stays fully editable, but a new one
+     * can't opt in.
+     */
+    private var geofencingLocked = false
 
     /** Live row bindings, one per centre point currently shown. */
     private val pointRows = mutableListOf<ItemGeofencePointBinding>()
@@ -86,6 +100,15 @@ class GeoFenceSettingsFragment : BottomSheetDialogFragment() {
             }
         }
 
+        // A group that's already geofenced stays editable; only opting a new one
+        // in is blocked while the global lock is on. Read it async, then hold the
+        // switch off if it applies.
+        viewLifecycleOwner.lifecycleScope.launch {
+            val restricted = dataStoreManager.settings.first().restrictNewGeofencing
+            geofencingLocked = restricted && !viewModel.geoFenceConfig.enabled
+            if (_binding != null) applyGeofenceLock()
+        }
+
         binding.btnAddLocation.setOnClickListener {
             addPointRow(null)
         }
@@ -93,6 +116,20 @@ class GeoFenceSettingsFragment : BottomSheetDialogFragment() {
         binding.saveSettings.setOnClickListener {
             if (saveConfig()) dismiss()
         }
+    }
+
+    /**
+     * Hold the enable switch off and surface the reason. No-op when the group is
+     * already geofenced or the global lock is off, so existing geofences keep
+     * working and stay editable.
+     */
+    private fun applyGeofenceLock() {
+        if (!geofencingLocked) return
+        binding.switchGeofenceEnabled.isChecked = false
+        binding.switchGeofenceEnabled.isEnabled = false
+        binding.switchGeofenceEnabled.alpha = 0.5f
+        binding.geofenceOptionsContainer.visibility = View.GONE
+        binding.tvGeofenceLockedHint.visibility = View.VISIBLE
     }
 
     private fun loadConfig() {
@@ -232,6 +269,13 @@ class GeoFenceSettingsFragment : BottomSheetDialogFragment() {
 
     /** @return true if the config was valid and saved. */
     private fun saveConfig(): Boolean {
+        // Authoritative backstop for the lock, in case the switch was toggled in
+        // the brief window before the async lock state landed.
+        if (geofencingLocked) {
+            viewModel.geoFenceConfig = viewModel.geoFenceConfig.copy(enabled = false)
+            return true
+        }
+
         val enabled = binding.switchGeofenceEnabled.isChecked
 
         if (!enabled) {

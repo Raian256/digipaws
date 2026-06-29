@@ -85,6 +85,10 @@ class DataStoreManager(private val context: Context) {
         settingsDataStore.updateData { it.copy(blockGeofencedWhenLocationUnavailable = value) }
     }
 
+    suspend fun updateRestrictNewGeofencing(value: Boolean) {
+        settingsDataStore.updateData { it.copy(restrictNewGeofencing = value) }
+    }
+
     suspend fun updateReelBlockerConfig(config: neth.iecal.curbox.data.models.ReelBlocker) {
         settingsDataStore.updateData { it.copy(reelBlockerConfig = config) }
     }

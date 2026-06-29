@@ -27,6 +27,7 @@ data class AntiModificationsConfig(
     fun isViewBlockerLocked(id: String) = groups.any { id in it.lockedViewBlockerIds }
     fun isEssentialAppsListLocked() = groups.any { it.lockEssentialAppsList }
     fun isGeofenceFailModeLocked() = groups.any { it.lockGeofenceFailMode }
+    fun isRestrictGeofencingLocked() = groups.any { it.lockRestrictGeofencing }
 
     // Whole-feature gates: if any item in the domain is locked by any group,
     // the corresponding master toggle must refuse "off" — otherwise disabling
@@ -71,7 +72,12 @@ data class AntiModificationsGroup(
      * setting. Like [lockEssentialAppsList] it gates a singleton toggle, not a
      * per-item collection.
      */
-    val lockGeofenceFailMode: Boolean = false
+    val lockGeofenceFailMode: Boolean = false,
+    /**
+     * Locks the global "lock geofencing" setting on, so geofencing can't be
+     * re-allowed for new groups once committed. Another singleton-toggle gate.
+     */
+    val lockRestrictGeofencing: Boolean = false
 ) {
     fun isPasswordMode() = mode == Constants.ANTI_UNINSTALL_PASSWORD_MODE
     fun isTimedMode() = mode == Constants.ANTI_UNINSTALL_TIMED_MODE
@@ -83,5 +89,6 @@ data class AntiModificationsGroup(
             lockedKeywords.size +
             lockedViewBlockerIds.size +
             (if (lockEssentialAppsList) 1 else 0) +
-            (if (lockGeofenceFailMode) 1 else 0)
+            (if (lockGeofenceFailMode) 1 else 0) +
+            (if (lockRestrictGeofencing) 1 else 0)
 }

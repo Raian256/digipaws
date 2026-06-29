@@ -85,6 +85,12 @@ class AppBlockerSettingViewModel(application: Application) : AndroidViewModel(ap
         }
     }
 
+    fun updateRestrictNewGeofencing(value: Boolean) {
+        viewModelScope.launch {
+            dataStoreManager.updateRestrictNewGeofencing(value)
+        }
+    }
+
     fun updateGroupActiveState(index: Int, isActive: Boolean) {
         viewModelScope.launch {
             val currentSettings = dataStoreManager.settings.first()
