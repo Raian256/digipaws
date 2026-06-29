@@ -36,7 +36,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
-            android:hint="Custom Warning Message">
+            android:hint="Custom Warning Message (optional)">
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/warning_msg_edit"
                 android:layout_width="match_parent"

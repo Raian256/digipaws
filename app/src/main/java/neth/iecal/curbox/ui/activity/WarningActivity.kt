@@ -214,7 +214,28 @@ val warningScreenConfig = Gson().fromJson<AppBlockerWarningScreenConfig>(
             }
             .show()
 
-        binding.warningMsg.text = warningScreenConfig.message
+        val targetLabel = if (mode == Constants.WARNING_SCREEN_MODE_APP_BLOCKER) {
+            resolveAppLabel(targetId)
+        } else {
+            "this content"
+        }
+
+        binding.warningTitle.text = when (mode) {
+            Constants.WARNING_SCREEN_MODE_APP_BLOCKER -> "$targetLabel is blocked"
+            Constants.WARNING_SCREEN_MODE_VIEW_BLOCKER -> "Short-form content is blocked"
+            else -> "Access blocked"
+        }
+
+        binding.warningDetails.text =
+            buildWarningDetails(mode, targetLabel, warningScreenConfig, isProceedLimitExceeded)
+
+        val customMessage = warningScreenConfig.message.trim()
+        if (customMessage.isEmpty()) {
+            binding.warningMsg.visibility = View.GONE
+        } else {
+            binding.warningMsg.visibility = View.VISIBLE
+            binding.warningMsg.text = customMessage
+        }
 
         binding.minsPicker.setValue(warningScreenConfig.timeInterval / 60000)
 
@@ -322,6 +343,68 @@ val warningScreenConfig = Gson().fromJson<AppBlockerWarningScreenConfig>(
         proceedTimer?.cancel()
         vibrator?.cancel()
         dialog?.dismiss()
+    }
+
+    private fun resolveAppLabel(packageName: String): String {
+        if (packageName.isEmpty()) return "this app"
+        return try {
+            packageManager.getApplicationLabel(
+                packageManager.getApplicationInfo(packageName, 0)
+            ).toString()
+        } catch (e: Exception) {
+            packageName
+        }
+    }
+
+    /**
+     * Builds the human-readable explanation shown on the warning screen:
+     * why access was stopped, what proceeding will do, and any extra
+     * requirements (intent, QR, typing, proceed limits) the user must meet.
+     */
+    private fun buildWarningDetails(
+        mode: Int,
+        targetLabel: String,
+        config: AppBlockerWarningScreenConfig,
+        isProceedLimitExceeded: Boolean
+    ): String {
+        val lines = mutableListOf<String>()
+
+        lines += when (mode) {
+            Constants.WARNING_SCREEN_MODE_APP_BLOCKER ->
+                "You opened $targetLabel, which you've chosen to restrict."
+            Constants.WARNING_SCREEN_MODE_VIEW_BLOCKER ->
+                "You reached a short-form video feed you've chosen to restrict."
+            else -> "This was opened in a restricted context."
+        }
+
+        when {
+            config.isProceedDisabled ->
+                lines += "Bypassing is disabled here — close this and step away."
+            isProceedLimitExceeded -> {
+                // The remaining-time message is shown separately in proceedSeconds.
+            }
+            config.isDynamicIntervalSettingAllowed ->
+                lines += "If you proceed, choose below how long to unlock for."
+            else ->
+                lines += "Proceeding unlocks access for ${config.timeInterval / 60000} min."
+        }
+
+        if (!config.isProceedDisabled && !isProceedLimitExceeded) {
+            if (config.isIntentRequirementEnabled) {
+                lines += "You must first state why you need access; the wait only starts after that."
+            }
+            if (config.isQrUnlockRequirementEnabled) {
+                lines += "You must scan your unlock QR/barcode to continue."
+            }
+            if (config.isTypingRequirementEnabled) {
+                lines += "You must type the required sentence exactly to continue."
+            }
+            if (config.proceedLimitEnabled) {
+                lines += "Limited to ${config.allowedProceeds} unlocks per ${config.proceedsTimeWindowMn} min."
+            }
+        }
+
+        return lines.joinToString("\n\n")
     }
 
     private fun sendRefreshRequest(id: String, action: String, time: Int) {

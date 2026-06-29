@@ -7,16 +7,39 @@
     android:padding="8dp">
 
     <TextView
-        android:id="@+id/warning_msg"
-        style="@style/TextAppearance.Material3.TitleLarge"
+        android:id="@+id/warning_title"
+        style="@style/TextAppearance.Material3.HeadlineSmall"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:gravity="center"
         android:padding="8dp"
-        android:textSize="24sp"
         android:textStyle="bold"
-        tools:text="TextView" />
+        tools:text="Instagram is blocked" />
+
+    <TextView
+        android:id="@+id/warning_details"
+        style="@style/TextAppearance.Material3.BodyMedium"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_marginHorizontal="8dp"
+        android:layout_marginTop="4dp"
+        android:gravity="center"
+        tools:text="You opened Instagram, which you've chosen to restrict.\n\nProceeding unlocks access for 5 min." />
+
+    <TextView
+        android:id="@+id/warning_msg"
+        style="@style/TextAppearance.Material3.TitleMedium"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:gravity="center"
+        android:padding="8dp"
+        android:layout_marginTop="8dp"
+        android:textStyle="italic"
+        android:visibility="gone"
+        tools:text="Custom message" />
 
     <neth.iecal.curbox.views.HorizontalNumberPicker
         android:id="@+id/mins_picker"

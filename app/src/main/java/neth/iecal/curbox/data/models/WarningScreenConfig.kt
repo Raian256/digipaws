@@ -2,7 +2,7 @@ package neth.iecal.curbox.data.models
 
 
 data class AppBlockerWarningScreenConfig(
-    val message: String = "You can setup a custom message to appear here!",
+    val message: String = "",
     val timeInterval: Int = 120000, // default cooldown period
     val isDynamicIntervalSettingAllowed: Boolean = false,
     val isProceedDisabled: Boolean = false,
