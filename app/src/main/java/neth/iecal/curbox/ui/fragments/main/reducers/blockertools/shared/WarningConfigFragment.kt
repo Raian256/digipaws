@@ -97,12 +97,9 @@ class WarningConfigFragment : Fragment() {
 
         binding.typingSentenceEdit.setText(config.typingSentence)
 
-        // Setup Sliders
-        binding.fixedTimeSlider.value = (config.timeInterval / 60000).toFloat().coerceIn(1f, 120f)
-        binding.timingTitle.text = "Fixed Unlock Duration: ${binding.fixedTimeSlider.value.toInt()} mins"
-
-        binding.proceedDelaySlider.value = config.proceedDelayInSecs.toFloat().coerceIn(0f, 60f)
-        binding.proceedDelayTitle.text = "Wait before unlocking: ${binding.proceedDelaySlider.value.toInt()}s"
+        // Setup arbitrary time inputs
+        binding.fixedTimeEdit.setText((config.timeInterval / 60000).coerceAtLeast(1).toString())
+        binding.proceedDelayEdit.setText(config.proceedDelayInSecs.coerceAtLeast(0).toString())
 
         binding.proceedLimitSwitch.isChecked = config.proceedLimitEnabled
         binding.proceedLimitContainer.visibility = if (config.proceedLimitEnabled) View.VISIBLE else View.GONE
@@ -120,14 +117,6 @@ class WarningConfigFragment : Fragment() {
     private fun setupListeners() {
         binding.unlockBehaviorDropdown.setOnItemClickListener { _, _, position, _ ->
             updateUiVisibility(position, animate = true)
-        }
-
-        binding.fixedTimeSlider.addOnChangeListener { _, value, _ ->
-            binding.timingTitle.text = "Fixed Unlock Duration: ${value.toInt()} mins"
-        }
-
-        binding.proceedDelaySlider.addOnChangeListener { _, value, _ ->
-            binding.proceedDelayTitle.text = "Wait before unlocking: ${value.toInt()}s"
         }
 
         binding.proceedLimitSwitch.setOnCheckedChangeListener { _, isChecked ->
@@ -198,7 +187,7 @@ class WarningConfigFragment : Fragment() {
 
             val config = AppBlockerWarningScreenConfig(
                 message = binding.warningMsgEdit.text.toString(),
-                timeInterval = (binding.fixedTimeSlider.value.toInt()) * 60_000,
+                timeInterval = (binding.fixedTimeEdit.text.toString().toIntOrNull()?.coerceAtLeast(1) ?: 1) * 60_000,
                 isDynamicIntervalSettingAllowed = isDynamicIntervalSettingAllowed,
                 isProceedDisabled = isProceedDisabled,
                 isWarningDialogHidden = isWarningDialogHidden,
@@ -207,7 +196,7 @@ class WarningConfigFragment : Fragment() {
                 isTypingRequirementEnabled = isTypingRequirementEnabled,
                 typingSentence = binding.typingSentenceEdit.text.toString(),
                 isIntentRequirementEnabled = isIntentRequirementEnabled,
-                proceedDelayInSecs = binding.proceedDelaySlider.value.toInt(),
+                proceedDelayInSecs = binding.proceedDelayEdit.text.toString().toIntOrNull()?.coerceAtLeast(0) ?: 0,
                 vibrateAndIncBrightness = binding.switchVibrateBrightness.isChecked,
                 proceedLimitEnabled = binding.proceedLimitSwitch.isChecked,
                 allowedProceeds = binding.allowedProceedsSlider.value.toInt(),

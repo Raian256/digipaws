@@ -76,17 +76,21 @@
                     android:id="@+id/timing_title"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Fixed Unlock Duration: 5 mins"
+                    android:text="Fixed Unlock Duration"
                     style="@style/TextAppearance.Material3.TitleSmall" />
 
-                <com.google.android.material.slider.Slider
-                    android:id="@+id/fixed_time_slider"
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:valueFrom="1.0"
-                    android:valueTo="120.0"
-                    android:stepSize="1.0"
-                    android:value="5.0" />
+                    android:layout_marginTop="8dp"
+                    android:hint="Duration (minutes)">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/fixed_time_edit"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="number" />
+                </com.google.android.material.textfield.TextInputLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -109,7 +113,7 @@
                     android:id="@+id/proceed_delay_title"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Wait before unlocking: 15s"
+                    android:text="Wait before unlocking"
                     style="@style/TextAppearance.Material3.TitleSmall" />
 
                 <TextView
@@ -119,14 +123,18 @@
                     style="@style/TextAppearance.Material3.BodySmall"
                     android:layout_marginTop="4dp" />
 
-                <com.google.android.material.slider.Slider
-                    android:id="@+id/proceed_delay_slider"
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:valueFrom="0.0"
-                    android:valueTo="60.0"
-                    android:stepSize="1.0"
-                    android:value="15.0" />
+                    android:layout_marginTop="8dp"
+                    android:hint="Wait (seconds)">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/proceed_delay_edit"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="number" />
+                </com.google.android.material.textfield.TextInputLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
