@@ -8,7 +8,7 @@ data class AppBlockerWarningScreenConfig(
     val isProceedDisabled: Boolean = false,
     val isWarningDialogHidden: Boolean = false, // perform back/home action directly without showing warning screen
     val proceedDelayInSecs: Int = 15,
-    val vibrateAndIncBrightness: Boolean = true,
+    val vibrateAndIncBrightness: Boolean = false,
     val proceedLimitEnabled: Boolean = false,
     val allowedProceeds: Int = 3,
     val proceedsTimeWindowMn: Int = 60,
