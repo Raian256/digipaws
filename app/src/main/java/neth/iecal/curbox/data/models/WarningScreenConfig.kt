@@ -17,4 +17,14 @@ data class AppBlockerWarningScreenConfig(
     val isTypingRequirementEnabled: Boolean = false,
     val typingSentence: String = "",
     val isIntentRequirementEnabled: Boolean = false,
+    /**
+     * Delayed unlock: instead of waiting on the warning screen, the user picks
+     * how long to unlock for and then has to wait off-screen before access opens.
+     * The wait is proportional to the chosen unlock length:
+     *   waitMillis = max(chosenUnlockMillis * delayedUnlockFactor, delayedUnlockMinWaitMn min)
+     * The user can leave the screen; a "stop cooldown" notification can cancel it.
+     */
+    val isDelayedUnlockEnabled: Boolean = false,
+    val delayedUnlockFactor: Float = 0.1f, // k > 0
+    val delayedUnlockMinWaitMn: Int = 10,  // N, the floor in minutes
 )

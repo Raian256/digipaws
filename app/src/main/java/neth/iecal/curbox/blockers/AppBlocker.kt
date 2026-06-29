@@ -56,6 +56,16 @@ class AppBlocker() : BaseBlocker() {
         const val INTENT_ACTION_REFRESH_APP_BLOCKER_COOLDOWN = "neth.iecal.curbox.refresh.appblocker.cooldown"
 
         /**
+         * Schedule a delayed unlock for an app. The user picked a duration on the
+         * warning screen and chose to wait off-screen instead of on it.
+         * Sent with:
+         *   result_id : String -> package name
+         *   delayed_chosen_ms : Long -> how long to unlock for once the wait ends
+         *   delayed_wait_ms   : Long -> how long to wait before the unlock opens
+         */
+        const val INTENT_ACTION_SCHEDULE_DELAYED_UNLOCK = "neth.iecal.curbox.schedule.delayedunlock"
+
+        /**
          * Forces the running blocker to fetch a fresh location fix and
          * re-evaluate the foregrounded app, for when the periodic geofence
          * location hasn't updated on its own.
@@ -73,6 +83,14 @@ class AppBlocker() : BaseBlocker() {
      * package-name -> end-time-in-real-time-millis
      */
     private var cooldownAppsList = HashMap<String, Long>()
+
+    /**
+     * Delayed unlocks the user started from the warning screen and walked away
+     * from. package-name -> [windowStart, windowEnd] in real-time millis.
+     * Before windowStart the app stays blocked (the wait is running); between
+     * windowStart and windowEnd it's usable; after windowEnd it re-blocks.
+     */
+    private val scheduledUnlocks = HashMap<String, LongArray>()
 
     /**
      * Per-package list of all active groups that cover the package. Storing a
@@ -127,6 +145,14 @@ class AppBlocker() : BaseBlocker() {
      */
     private var blockWhenLocationUnavailable = false
 
+    /**
+     * Weighting factor favoring an on-screen wait over a delayed (off-screen)
+     * unlock when deciding which mode is stricter. Mirrors
+     * [neth.iecal.curbox.data.models.Settings.delayedUnlockOnScreenWeight] and is
+     * refreshed alongside the group lists.
+     */
+    private var delayedUnlockOnScreenWeight = 2.0f
+
     /** True while a manual geofence refresh is pending its randomised delay. */
     private var geofenceRefreshScheduled = false
 
@@ -137,7 +163,12 @@ class AppBlocker() : BaseBlocker() {
 
     private val activeRunnables = HashMap<String, Runnable>()
 
+    /** Pending re-evaluation callbacks for scheduled (delayed) unlocks, keyed by package. */
+    private val delayedRunnables = HashMap<String, Runnable>()
+
     private lateinit var notificationManager: TimerNotification
+
+    private lateinit var delayedUnlockNotifier: neth.iecal.curbox.utils.DelayedUnlockNotifier
 
 
     fun doAppBlockerCheck(event: AccessibilityEvent?) {
@@ -171,6 +202,39 @@ class AppBlocker() : BaseBlocker() {
      * screen, which produces no accessibility event).
      */
     private fun evaluatePackage(packageName: String) {
+        // Check delayed (off-screen) unlock first: it overrides the normal
+        // block decision while its wait/usage window is in effect.
+        scheduledUnlocks[packageName]?.let { window ->
+            val now = System.currentTimeMillis()
+            val windowStart = window[0]
+            val windowEnd = window[1]
+            when {
+                now >= windowEnd -> {
+                    // Window fully elapsed — drop it and fall through to the
+                    // normal block checks below (which will re-block / re-warn).
+                    removeScheduledUnlock(packageName)
+                }
+                now >= windowStart -> {
+                    // Unlock window is open: allow use, count down to re-lock.
+                    delayedUnlockNotifier.cancel(packageName)
+                    notificationManager.startTimer(
+                        totalMillis = windowEnd - now,
+                        timerId = packageName,
+                        title = "Remaining usage before lockdown"
+                    )
+                    releaseAudioSilence(packageName)
+                    scheduleDelayedCheck(packageName, windowEnd)
+                    return
+                }
+                else -> {
+                    // Still waiting: keep the app blocked and show the warning
+                    // screen, which will reflect the pending wait (no restart).
+                    showWarningScreen(packageName)
+                    return
+                }
+            }
+        }
+
         // Check Cooldown
         if (cooldownAppsList.containsKey(packageName)) {
             if (cooldownAppsList[packageName]!! < System.currentTimeMillis()) {
@@ -239,6 +303,8 @@ class AppBlocker() : BaseBlocker() {
         val filter = IntentFilter().apply {
             addAction(INTENT_ACTION_REFRESH_APP_BLOCKER)
             addAction(INTENT_ACTION_REFRESH_APP_BLOCKER_COOLDOWN)
+            addAction(INTENT_ACTION_SCHEDULE_DELAYED_UNLOCK)
+            addAction(neth.iecal.curbox.utils.DelayedUnlockNotifier.ACTION_STOP)
             addAction(INTENT_ACTION_REFRESH_GEOFENCE_LOCATION)
             addAction(MediaNotifSilencer.ACTION_AUDIO_TOTALS)
         }
@@ -254,12 +320,14 @@ class AppBlocker() : BaseBlocker() {
         notificationManager.release()
         handler.removeCallbacksAndMessages(null)
         activeRunnables.clear()
+        delayedRunnables.clear()
         if (::locationProvider.isInitialized) locationProvider.stop()
     }
 
     fun setupAppBlocker(service: BaseBlockingService) {
         this.service = service
         notificationManager = TimerNotification(service)
+        delayedUnlockNotifier = neth.iecal.curbox.utils.DelayedUnlockNotifier(service)
         prefs = service.getSharedPreferences("app_blocker_prefs", Context.MODE_PRIVATE)
         loadPersistedData()
         if (!::locationProvider.isInitialized) {
@@ -273,6 +341,7 @@ class AppBlocker() : BaseBlocker() {
                 // Refresh essentials so user-added custom essentials take effect immediately.
                 essentialPackages = getEssentialPackages(service, settings.customEssentialPackages.toSet())
                 blockWhenLocationUnavailable = settings.blockGeofencedWhenLocationUnavailable
+                delayedUnlockOnScreenWeight = settings.delayedUnlockOnScreenWeight
                 // Rebuild per-package entry lists from scratch on every refresh.
                 blockedAppsList.clear()
                 timeBlockedAppsList.clear()
@@ -332,6 +401,123 @@ class AppBlocker() : BaseBlocker() {
         setUpForcedRefreshChecker(coolPackage, realTimeEndMillis)
         // User earned a cooldown — restore audio (they're using the app on purpose now).
         releaseAudioSilence(coolPackage)
+    }
+
+    /**
+     * The user started a delayed unlock from the warning screen: stamp the
+     * wait + usage window, persist it, show the stoppable countdown, and arm a
+     * background re-evaluation for when the wait ends.
+     */
+    private fun handleScheduleDelayedUnlock(intent: Intent) {
+        val pkg = intent.getStringExtra("result_id") ?: return
+        val chosenMs = intent.getLongExtra("delayed_chosen_ms", 0L)
+        val waitMs = intent.getLongExtra("delayed_wait_ms", 0L)
+        if (chosenMs <= 0L) return
+
+        val now = System.currentTimeMillis()
+        val windowStart = now + waitMs.coerceAtLeast(0L)
+        val windowEnd = windowStart + chosenMs
+
+        // A delayed unlock supersedes any plain cooldown for this app.
+        removeCooldownFrom(pkg)
+
+        scheduledUnlocks[pkg] = longArrayOf(windowStart, windowEnd)
+        persistDelayedUnlocks()
+
+        delayedUnlockNotifier.showWaiting(pkg, resolveAppLabel(pkg), windowStart)
+        scheduleDelayedCheck(pkg, windowStart)
+    }
+
+    /** The "Stop cooldown" notification action: cancel a pending delayed unlock. */
+    private fun handleStopDelayedUnlock(intent: Intent) {
+        val pkg = intent.getStringExtra("result_id") ?: return
+        removeScheduledUnlock(pkg)
+        delayedRunnables.remove(pkg)?.let { handler.removeCallbacks(it) }
+        delayedUnlockNotifier.cancel(pkg)
+        // If the app happens to be foreground, re-block it right away.
+        if (service.rootInActiveWindow?.packageName == pkg) {
+            lastPackage = ""
+            showWarningScreen(pkg)
+        }
+    }
+
+    /**
+     * Posts a re-evaluation of [pkg]'s scheduled unlock at [atTime]. Fires
+     * immediately if the time has already passed (e.g. restored after the wait
+     * already elapsed).
+     */
+    private fun scheduleDelayedCheck(pkg: String, atTime: Long) {
+        delayedRunnables.remove(pkg)?.let { handler.removeCallbacks(it) }
+        val delay = atTime - System.currentTimeMillis()
+        if (delay <= 0L) {
+            onDelayedUnlockTick(pkg)
+            return
+        }
+        val runnable = Runnable {
+            delayedRunnables.remove(pkg)
+            onDelayedUnlockTick(pkg)
+        }
+        delayedRunnables[pkg] = runnable
+        handler.postDelayed(runnable, delay)
+    }
+
+    /**
+     * Drives a scheduled unlock across its phases without the user needing to be
+     * on any screen: swap the waiting notification for the "ready" countdown
+     * when the wait ends, and re-block when the usage window closes.
+     */
+    private fun onDelayedUnlockTick(pkg: String) {
+        val window = scheduledUnlocks[pkg] ?: return
+        val now = System.currentTimeMillis()
+        val windowStart = window[0]
+        val windowEnd = window[1]
+        val isForeground = try {
+            service.rootInActiveWindow?.packageName == pkg
+        } catch (e: Exception) {
+            false
+        }
+
+        when {
+            now >= windowEnd -> {
+                removeScheduledUnlock(pkg)
+                delayedUnlockNotifier.cancel(pkg)
+                if (isForeground) {
+                    lastPackage = ""
+                    showWarningScreen(pkg)
+                }
+            }
+            now >= windowStart -> {
+                // Wait finished — the unlock window is open.
+                if (isForeground) {
+                    // Let the normal path start the usage timer and arm re-lock.
+                    lastPackage = ""
+                    evaluatePackage(pkg)
+                } else {
+                    delayedUnlockNotifier.showReady(pkg, resolveAppLabel(pkg), windowEnd)
+                    scheduleDelayedCheck(pkg, windowEnd)
+                }
+            }
+            else -> scheduleDelayedCheck(pkg, windowStart)
+        }
+    }
+
+    private fun persistDelayedUnlocks() {
+        prefs.edit {
+            putStringSet("delayed_keys", scheduledUnlocks.keys)
+            scheduledUnlocks.forEach { (pkg, window) ->
+                putLong("delayed_start_$pkg", window[0])
+                putLong("delayed_end_$pkg", window[1])
+            }
+        }
+    }
+
+    private fun removeScheduledUnlock(pkg: String) {
+        scheduledUnlocks.remove(pkg)
+        prefs.edit {
+            remove("delayed_start_$pkg")
+            remove("delayed_end_$pkg")
+            putStringSet("delayed_keys", scheduledUnlocks.keys)
+        }
     }
 
     /**
@@ -490,7 +676,39 @@ class AppBlocker() : BaseBlocker() {
                 cooldownAppsList[packageName] = endTime
             }
         }
+        loadPersistedDelayedUnlocks()
         loadPersistedAudioTotals()
+    }
+
+    /**
+     * Restore delayed unlocks across a service restart: drop any whose window has
+     * fully elapsed, and re-arm the background callback (and waiting notification)
+     * for those still pending or mid-window.
+     */
+    private fun loadPersistedDelayedUnlocks() {
+        val keys = prefs.getStringSet("delayed_keys", setOf()) ?: setOf()
+        val now = System.currentTimeMillis()
+        keys.forEach { pkg ->
+            val windowStart = prefs.getLong("delayed_start_$pkg", 0L)
+            val windowEnd = prefs.getLong("delayed_end_$pkg", 0L)
+            if (windowEnd <= now) {
+                prefs.edit {
+                    remove("delayed_start_$pkg")
+                    remove("delayed_end_$pkg")
+                }
+                return@forEach
+            }
+            scheduledUnlocks[pkg] = longArrayOf(windowStart, windowEnd)
+            if (now < windowStart) {
+                delayedUnlockNotifier.showWaiting(pkg, resolveAppLabel(pkg), windowStart)
+                scheduleDelayedCheck(pkg, windowStart)
+            } else {
+                delayedUnlockNotifier.showReady(pkg, resolveAppLabel(pkg), windowEnd)
+                scheduleDelayedCheck(pkg, windowEnd)
+            }
+        }
+        // Re-write the key set in case stale entries were pruned above.
+        prefs.edit { putStringSet("delayed_keys", scheduledUnlocks.keys) }
     }
 
     /**
@@ -577,6 +795,39 @@ class AppBlocker() : BaseBlocker() {
         val anyProceedLimit = warnings.any { it.proceedLimitEnabled }
         val mergedQrKeys = warnings.flatMap { it.qrKeys.entries }.associate { it.key to it.value }
 
+        // Decide which mode is stricter when a package is covered by both an
+        // on-screen wait and a delayed (off-screen) unlock. For each on-screen
+        // group (wait N seconds, unlocks for M minutes) we ask: would the delayed
+        // path make the user wait longer for that same M-minute unlock, i.e. is
+        //     max(M * k, delayedMin) * 60  >  N * weight
+        // The weight (>= 1) favors the on-screen wait, since staring at the screen
+        // is more friction than waiting freely. Delayed wins only if it out-frictions
+        // EVERY on-screen group, so adding a looser group of either kind can't
+        // create a bypass. On-screen task requirements (proceed disabled / QR /
+        // typing / intent) can't be expressed in delayed mode, so their presence
+        // forces the on-screen flow outright.
+        val delayedGroups = warnings.filter { it.isDelayedUnlockEnabled }
+        val onScreenGroups = warnings.filter { !it.isDelayedUnlockEnabled }
+        val onScreenHasTask = onScreenGroups.any {
+            it.isProceedDisabled || it.isQrUnlockRequirementEnabled ||
+                it.isTypingRequirementEnabled || it.isIntentRequirementEnabled
+        }
+        val useDelayedUnlock = when {
+            delayedGroups.isEmpty() -> false
+            onScreenGroups.isEmpty() -> true
+            onScreenHasTask -> false
+            else -> {
+                val k = delayedGroups.maxOf { it.delayedUnlockFactor }
+                val delayedMinMn = delayedGroups.maxOf { it.delayedUnlockMinWaitMn }
+                val weight = delayedUnlockOnScreenWeight.coerceAtLeast(1f)
+                onScreenGroups.all { group ->
+                    val unlockMinutes = group.timeInterval / 60_000.0
+                    val delayedWaitSec = maxOf(unlockMinutes * k, delayedMinMn.toDouble()) * 60.0
+                    delayedWaitSec > group.proceedDelayInSecs * weight
+                }
+            }
+        }
+
         return AppBlockerWarningScreenConfig(
             message = warnings.firstOrNull { it.message != defaults.message }?.message ?: defaults.message,
             timeInterval = warnings.minOf { it.timeInterval },
@@ -601,6 +852,13 @@ class AppBlocker() : BaseBlocker() {
                     ?.typingSentence ?: ""
             } else "",
             isIntentRequirementEnabled = warnings.any { it.isIntentRequirementEnabled },
+            // See TODO(merge-criterion) above. When delayed mode wins, enforce the
+            // longest wait (highest factor + floor) among the delayed groups.
+            isDelayedUnlockEnabled = useDelayedUnlock,
+            delayedUnlockFactor = delayedGroups.maxOfOrNull { it.delayedUnlockFactor }
+                ?: defaults.delayedUnlockFactor,
+            delayedUnlockMinWaitMn = delayedGroups.maxOfOrNull { it.delayedUnlockMinWaitMn }
+                ?: defaults.delayedUnlockMinWaitMn,
         )
     }
 
@@ -673,6 +931,15 @@ class AppBlocker() : BaseBlocker() {
         handler.postDelayed(runnable, delayMillis)
     }
 
+    private fun resolveAppLabel(packageName: String): String {
+        return try {
+            val pm = service.packageManager
+            pm.getApplicationLabel(pm.getApplicationInfo(packageName, 0)).toString()
+        } catch (e: Exception) {
+            packageName
+        }
+    }
+
     private fun showWarningScreen(packageName: String) {
         notificationManager.stopTimer()
         // Back-then-Home: if this blocked app was opened from another (unblocked)
@@ -691,12 +958,19 @@ class AppBlocker() : BaseBlocker() {
         val warning = mergedStrictestWarning(packageName) ?: return
         if (warning.isWarningDialogHidden) return
 
+        // If a delayed unlock is still waiting, tell the screen so it shows the
+        // remaining wait instead of offering to start another one.
+        val pendingUnlockAt = scheduledUnlocks[packageName]?.let { window ->
+            if (System.currentTimeMillis() < window[0]) window[0] else 0L
+        } ?: 0L
+
         handler.postDelayed({
             val dialogIntent = Intent(service, WarningActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                 putExtra("mode", Constants.WARNING_SCREEN_MODE_APP_BLOCKER)
                 putExtra("result_id", packageName)
                 putExtra("warning_config", Gson().toJson(warning))
+                putExtra("pending_unlock_at", pendingUnlockAt)
             }
             service.startActivity(dialogIntent)
         }, 300)
@@ -708,6 +982,8 @@ class AppBlocker() : BaseBlocker() {
             when (intent.action) {
                 INTENT_ACTION_REFRESH_APP_BLOCKER -> setupAppBlocker(service)
                 INTENT_ACTION_REFRESH_APP_BLOCKER_COOLDOWN -> handlePutCooldownIntentBroadcast(intent)
+                INTENT_ACTION_SCHEDULE_DELAYED_UNLOCK -> handleScheduleDelayedUnlock(intent)
+                neth.iecal.curbox.utils.DelayedUnlockNotifier.ACTION_STOP -> handleStopDelayedUnlock(intent)
                 INTENT_ACTION_REFRESH_GEOFENCE_LOCATION -> scheduleGeofenceRefresh()
                 MediaNotifSilencer.ACTION_AUDIO_TOTALS -> handleAudioTotalsBroadcast(intent)
             }

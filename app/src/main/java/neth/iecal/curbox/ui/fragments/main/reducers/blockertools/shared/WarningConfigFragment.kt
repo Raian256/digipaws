@@ -38,7 +38,8 @@ class WarningConfigFragment : Fragment() {
         "Fixed unlock time",
         "Disable unlocking entirely",
         "Unlock requires QR/Barcode scanning",
-        "Unlock requires typing a sentence"
+        "Unlock requires typing a sentence",
+        "Delayed unlock (wait off-screen)"
     )
 
     private val barcodeLauncher = registerForActivityResult(ScanContract()) { result ->
@@ -84,6 +85,7 @@ class WarningConfigFragment : Fragment() {
         binding.unlockBehaviorDropdown.setAdapter(adapter)
 
         val initialIndex = when {
+            config.isDelayedUnlockEnabled -> 6
             config.isTypingRequirementEnabled -> 5
             config.isQrUnlockRequirementEnabled -> 4
             config.isWarningDialogHidden -> 0
@@ -100,6 +102,9 @@ class WarningConfigFragment : Fragment() {
         // Setup arbitrary time inputs
         binding.fixedTimeEdit.setText((config.timeInterval / 60000).coerceAtLeast(1).toString())
         binding.proceedDelayEdit.setText(config.proceedDelayInSecs.coerceAtLeast(0).toString())
+
+        binding.delayedFactorEdit.setText(config.delayedUnlockFactor.toString())
+        binding.delayedMinWaitEdit.setText(config.delayedUnlockMinWaitMn.coerceAtLeast(0).toString())
 
         binding.proceedLimitSwitch.isChecked = config.proceedLimitEnabled
         binding.proceedLimitContainer.visibility = if (config.proceedLimitEnabled) View.VISIBLE else View.GONE
@@ -182,8 +187,16 @@ class WarningConfigFragment : Fragment() {
             val isProceedDisabled = bIdx == 3
             val isQrUnlockRequirementEnabled = bIdx == 4
             val isTypingRequirementEnabled = bIdx == 5
+            val isDelayedUnlockEnabled = bIdx == 6
             val supportsIntent = bIdx == 1 || bIdx == 2
             val isIntentRequirementEnabled = supportsIntent && binding.intentRequirementSwitch.isChecked
+
+            // Wait factor must stay positive, otherwise the wait collapses to 0
+            // and the floor (minimum wait) becomes the only thing enforced.
+            val delayedFactor = binding.delayedFactorEdit.text.toString().toFloatOrNull()
+                ?.takeIf { it > 0f } ?: 0.1f
+            val delayedMinWait = binding.delayedMinWaitEdit.text.toString().toIntOrNull()
+                ?.coerceAtLeast(0) ?: 10
 
             val config = AppBlockerWarningScreenConfig(
                 message = binding.warningMsgEdit.text.toString(),
@@ -200,7 +213,10 @@ class WarningConfigFragment : Fragment() {
                 vibrateAndIncBrightness = binding.switchVibrateBrightness.isChecked,
                 proceedLimitEnabled = binding.proceedLimitSwitch.isChecked,
                 allowedProceeds = binding.allowedProceedsSlider.value.toInt(),
-                proceedsTimeWindowMn = binding.proceedWindowSlider.value.toInt()
+                proceedsTimeWindowMn = binding.proceedWindowSlider.value.toInt(),
+                isDelayedUnlockEnabled = isDelayedUnlockEnabled,
+                delayedUnlockFactor = delayedFactor,
+                delayedUnlockMinWaitMn = delayedMinWait
             )
             
             val requestKey = arguments?.getString(ARG_REQUEST_KEY) ?: RESULT_KEY
@@ -257,6 +273,7 @@ class WarningConfigFragment : Fragment() {
             qrSetupContainer.visibility = if (behaviorIndex == 4) View.VISIBLE else View.GONE
             typingSetupContainer.visibility = if (behaviorIndex == 5) View.VISIBLE else View.GONE
             intentToggleContainer.visibility = if (behaviorIndex == 1 || behaviorIndex == 2) View.VISIBLE else View.GONE
+            delayedUnlockContainer.visibility = if (behaviorIndex == 6) View.VISIBLE else View.GONE
         }
     }
     

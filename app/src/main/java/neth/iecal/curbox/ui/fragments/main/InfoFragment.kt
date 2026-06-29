@@ -39,6 +39,7 @@ class InfoFragment : Fragment() {
     /** True while the matching toggle is held on by an Anti-Modifications group. */
     private var locationFallbackLocked = false
     private var restrictGeofencingLocked = false
+    private var delayedUnlockWeightLocked = false
 
     private val exportPicker: ActivityResultLauncher<Intent> =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -63,6 +64,7 @@ class InfoFragment : Fragment() {
 
         setupClickListeners()
         setupGeofencingToggles()
+        setupDelayedUnlockWeight()
         showBuildInfo()
     }
 
@@ -94,10 +96,57 @@ class InfoFragment : Fragment() {
                     binding.switchRestrictGeofencing.alpha =
                         if (restrictGeofencingLocked) 0.5f else 1f
                     rebindRestrictGeofencingListener()
+
+                    delayedUnlockWeightLocked =
+                        AntiModificationsGate.isDelayedUnlockWeightLocked(antiMods)
+                    // Don't clobber what the user is mid-typing.
+                    if (!binding.delayedUnlockWeightEdit.hasFocus()) {
+                        binding.delayedUnlockWeightEdit.setText(
+                            formatWeight(settings.delayedUnlockOnScreenWeight)
+                        )
+                    }
+                    binding.delayedUnlockWeightEdit.isEnabled = !delayedUnlockWeightLocked
+                    binding.delayedUnlockWeightLayout.alpha =
+                        if (delayedUnlockWeightLocked) 0.5f else 1f
                 }
             }
         }
     }
+
+    /**
+     * The on-screen-wait weighting factor used by the delayed-unlock merge.
+     * Commits on "Done" / focus loss, clamped to >= 1. When an Anti-Modifications
+     * group locks it, the field is disabled so it can't be lowered.
+     */
+    private fun setupDelayedUnlockWeight() {
+        binding.delayedUnlockWeightEdit.setOnEditorActionListener { v, actionId, _ ->
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_DONE) {
+                commitDelayedUnlockWeight()
+                v.clearFocus()
+                true
+            } else {
+                false
+            }
+        }
+        binding.delayedUnlockWeightEdit.setOnFocusChangeListener { _, hasFocus ->
+            if (!hasFocus) commitDelayedUnlockWeight()
+        }
+    }
+
+    private fun commitDelayedUnlockWeight() {
+        if (delayedUnlockWeightLocked) return
+        val parsed = binding.delayedUnlockWeightEdit.text?.toString()?.toFloatOrNull()
+        val value = (parsed ?: 1f).coerceAtLeast(1f)
+        binding.delayedUnlockWeightEdit.setText(formatWeight(value))
+        viewLifecycleOwner.lifecycleScope.launch {
+            dataStoreManager.updateDelayedUnlockOnScreenWeight(value)
+            requireContext().sendBroadcast(Intent(AppBlocker.INTENT_ACTION_REFRESH_APP_BLOCKER))
+        }
+    }
+
+    /** Drops a trailing ".0" so whole numbers read cleanly (e.g. "2" not "2.0"). */
+    private fun formatWeight(value: Float): String =
+        if (value == value.toLong().toFloat()) value.toLong().toString() else value.toString()
 
     private fun rebindLocationFallbackListener() {
         binding.switchLocationFallback.setOnCheckedChangeListener { buttonView, isChecked ->

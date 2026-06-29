@@ -89,6 +89,10 @@ class DataStoreManager(private val context: Context) {
         settingsDataStore.updateData { it.copy(restrictNewGeofencing = value) }
     }
 
+    suspend fun updateDelayedUnlockOnScreenWeight(value: Float) {
+        settingsDataStore.updateData { it.copy(delayedUnlockOnScreenWeight = value) }
+    }
+
     suspend fun updateReelBlockerConfig(config: neth.iecal.curbox.data.models.ReelBlocker) {
         settingsDataStore.updateData { it.copy(reelBlockerConfig = config) }
     }

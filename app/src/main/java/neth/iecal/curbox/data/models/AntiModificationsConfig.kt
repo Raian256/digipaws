@@ -28,6 +28,7 @@ data class AntiModificationsConfig(
     fun isEssentialAppsListLocked() = groups.any { it.lockEssentialAppsList }
     fun isGeofenceFailModeLocked() = groups.any { it.lockGeofenceFailMode }
     fun isRestrictGeofencingLocked() = groups.any { it.lockRestrictGeofencing }
+    fun isDelayedUnlockWeightLocked() = groups.any { it.lockDelayedUnlockWeight }
 
     // Whole-feature gates: if any item in the domain is locked by any group,
     // the corresponding master toggle must refuse "off" — otherwise disabling
@@ -77,7 +78,13 @@ data class AntiModificationsGroup(
      * Locks the global "lock geofencing" setting on, so geofencing can't be
      * re-allowed for new groups once committed. Another singleton-toggle gate.
      */
-    val lockRestrictGeofencing: Boolean = false
+    val lockRestrictGeofencing: Boolean = false,
+    /**
+     * Locks the global "on-screen wait weighting factor" used by the delayed-unlock
+     * merge, so its value can't be lowered to weaken the friction comparison.
+     * Another singleton-toggle gate.
+     */
+    val lockDelayedUnlockWeight: Boolean = false
 ) {
     fun isPasswordMode() = mode == Constants.ANTI_UNINSTALL_PASSWORD_MODE
     fun isTimedMode() = mode == Constants.ANTI_UNINSTALL_TIMED_MODE
@@ -90,5 +97,6 @@ data class AntiModificationsGroup(
             lockedViewBlockerIds.size +
             (if (lockEssentialAppsList) 1 else 0) +
             (if (lockGeofenceFailMode) 1 else 0) +
-            (if (lockRestrictGeofencing) 1 else 0)
+            (if (lockRestrictGeofencing) 1 else 0) +
+            (if (lockDelayedUnlockWeight) 1 else 0)
 }

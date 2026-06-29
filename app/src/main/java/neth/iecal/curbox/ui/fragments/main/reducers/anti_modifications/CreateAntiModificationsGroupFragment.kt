@@ -43,6 +43,7 @@ class CreateAntiModificationsGroupFragment : Fragment() {
     private var pickedLockEssentials: Boolean = false
     private var pickedLockGeofenceFailMode: Boolean = false
     private var pickedLockRestrictGeofencing: Boolean = false
+    private var pickedLockDelayedUnlockWeight: Boolean = false
 
     private var selectedEndMillis: Long = 0L
 
@@ -93,11 +94,13 @@ class CreateAntiModificationsGroupFragment : Fragment() {
                 pickedLockEssentials = existing.lockEssentialAppsList
                 pickedLockGeofenceFailMode = existing.lockGeofenceFailMode
                 pickedLockRestrictGeofencing = existing.lockRestrictGeofencing
+                pickedLockDelayedUnlockWeight = existing.lockDelayedUnlockWeight
             }
             populatePickers(settings)
             populateEssentialsSection()
             populateGeofenceFailModeSection()
             populateRestrictGeofencingSection()
+            populateDelayedUnlockWeightSection()
             updateItemsSummary()
         }
 
@@ -209,12 +212,26 @@ class CreateAntiModificationsGroupFragment : Fragment() {
         binding.sectionRestrictGeofencing.addView(cb)
     }
 
+    private fun populateDelayedUnlockWeightSection() {
+        binding.sectionDelayedUnlockWeight.removeAllViews()
+        val cb = CheckBox(requireContext()).apply {
+            text = getString(R.string.anti_modifications_delayed_unlock_weight_item_label)
+            isChecked = pickedLockDelayedUnlockWeight
+            setOnCheckedChangeListener { _, checked ->
+                pickedLockDelayedUnlockWeight = checked
+                updateItemsSummary()
+            }
+        }
+        binding.sectionDelayedUnlockWeight.addView(cb)
+    }
+
     private fun updateItemsSummary() {
         val total = pickedAppPauseIds.size + pickedAutoFocusIds.size +
             pickedKeywords.size + pickedViewBlockerIds.size +
             (if (pickedLockEssentials) 1 else 0) +
             (if (pickedLockGeofenceFailMode) 1 else 0) +
-            (if (pickedLockRestrictGeofencing) 1 else 0)
+            (if (pickedLockRestrictGeofencing) 1 else 0) +
+            (if (pickedLockDelayedUnlockWeight) 1 else 0)
         binding.itemsSummary.text = getString(R.string.anti_modifications_items_count_summary, total)
     }
 
@@ -240,7 +257,8 @@ class CreateAntiModificationsGroupFragment : Fragment() {
             pickedKeywords.size + pickedViewBlockerIds.size +
             (if (pickedLockEssentials) 1 else 0) +
             (if (pickedLockGeofenceFailMode) 1 else 0) +
-            (if (pickedLockRestrictGeofencing) 1 else 0)
+            (if (pickedLockRestrictGeofencing) 1 else 0) +
+            (if (pickedLockDelayedUnlockWeight) 1 else 0)
         if (totalItems == 0) {
             MaterialAlertDialogBuilder(requireContext())
                 .setTitle(R.string.anti_modifications_title)
@@ -321,7 +339,8 @@ class CreateAntiModificationsGroupFragment : Fragment() {
                     lockedViewBlockerIds = pickedViewBlockerIds.toSet(),
                     lockEssentialAppsList = pickedLockEssentials,
                     lockGeofenceFailMode = pickedLockGeofenceFailMode,
-                    lockRestrictGeofencing = pickedLockRestrictGeofencing
+                    lockRestrictGeofencing = pickedLockRestrictGeofencing,
+                    lockDelayedUnlockWeight = pickedLockDelayedUnlockWeight
                 )
                 AntiModificationsUnlock.createGroup(this, group)
                 requireActivity().finish()
@@ -341,7 +360,8 @@ class CreateAntiModificationsGroupFragment : Fragment() {
                 // Tighten only — never flip the flag off here.
                 lockEssentialAppsList = g.lockEssentialAppsList || pickedLockEssentials,
                 lockGeofenceFailMode = g.lockGeofenceFailMode || pickedLockGeofenceFailMode,
-                lockRestrictGeofencing = g.lockRestrictGeofencing || pickedLockRestrictGeofencing
+                lockRestrictGeofencing = g.lockRestrictGeofencing || pickedLockRestrictGeofencing,
+                lockDelayedUnlockWeight = g.lockDelayedUnlockWeight || pickedLockDelayedUnlockWeight
             )
         }
         requireActivity().finish()

@@ -38,6 +38,14 @@
     <string name="anti_modifications_geofence_failmode_item_label">Block-when-location-unavailable setting</string>
     <string name="anti_modifications_section_restrict_geofencing">Geofencing lock</string>
     <string name="anti_modifications_restrict_geofencing_item_label">Lock-geofencing setting</string>
+    <string name="anti_modifications_section_delayed_unlock_weight">Delayed-unlock weighting</string>
+    <string name="anti_modifications_delayed_unlock_weight_item_label">On-screen wait weighting factor</string>
+
+    <!-- Delayed-unlock on-screen weighting factor -->
+    <string name="delayed_unlock_weight_title">On-screen wait weighting</string>
+    <string name="delayed_unlock_weight_subtitle">When an app is covered by both an on-screen wait and a delayed (off-screen) unlock, the on-screen wait is multiplied by this factor before comparing which is stricter. Higher favors keeping the on-screen wait. Must be at least 1.</string>
+    <string name="delayed_unlock_weight_hint">Weighting factor (≥ 1)</string>
+    <string name="delayed_unlock_weight_locked_hint">This setting is locked by an Anti-Modifications group.</string>
 
     <!-- Restrict turning geofencing on for new groups -->
     <string name="restrict_geofencing_title">Lock geofencing</string>
@@ -75,6 +83,7 @@
     <string name="admin_permission_desc">Curbox Anti-Uninstall</string>
     <string name="close">Close</string>
     <string name="proceed">Proceed</string>
+    <string name="start_wait">Start wait</string>
     <string name="cancel">Cancel</string>
     <string name="retry">Retry</string>
     <string name="remove">Remove</string>

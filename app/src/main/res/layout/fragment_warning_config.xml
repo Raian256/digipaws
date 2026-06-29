@@ -138,6 +138,62 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- Delayed Unlock (wait off-screen) -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/delayed_unlock_container"
+            style="@style/Widget.Material3.CardView.Outlined"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Delayed unlock"
+                    style="@style/TextAppearance.Material3.TitleSmall" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="You pick how long to unlock for, then wait off-screen before access opens. Wait = chosen duration × factor, never less than the minimum below. You can leave and a notification lets you stop it."
+                    style="@style/TextAppearance.Material3.BodySmall" />
+
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:hint="Wait factor (k, e.g. 0.1)">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/delayed_factor_edit"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="numberDecimal" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:hint="Minimum wait (minutes)">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/delayed_min_wait_edit"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="number" />
+                </com.google.android.material.textfield.TextInputLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
         <!-- Intent Toggle (combines with Fixed / Dynamic time) -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/intent_toggle_container"

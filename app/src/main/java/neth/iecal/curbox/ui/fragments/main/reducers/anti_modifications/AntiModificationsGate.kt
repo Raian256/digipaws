@@ -43,6 +43,9 @@ object AntiModificationsGate {
     fun isRestrictGeofencingLocked(config: AntiModificationsConfig) =
         config.isRestrictGeofencingLocked()
 
+    fun isDelayedUnlockWeightLocked(config: AntiModificationsConfig) =
+        config.isDelayedUnlockWeightLocked()
+
     fun hasAnyLockedKeyword(config: AntiModificationsConfig) =
         config.hasAnyLockedKeyword()
 

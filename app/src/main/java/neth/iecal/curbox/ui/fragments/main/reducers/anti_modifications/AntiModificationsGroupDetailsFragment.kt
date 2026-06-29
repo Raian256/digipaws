@@ -35,6 +35,7 @@ class AntiModificationsGroupDetailsFragment : Fragment() {
         private const val ESSENTIALS_PSEUDO_ID = "__essentials__"
         private const val GEOFENCE_FAILMODE_PSEUDO_ID = "__geofence_failmode__"
         private const val RESTRICT_GEOFENCING_PSEUDO_ID = "__restrict_geofencing__"
+        private const val DELAYED_UNLOCK_WEIGHT_PSEUDO_ID = "__delayed_unlock_weight__"
     }
 
     private var _binding: FragmentAntiModificationsGroupDetailsBinding? = null
@@ -219,6 +220,15 @@ class AntiModificationsGroupDetailsFragment : Fragment() {
             ids = if (g.lockRestrictGeofencing) setOf(RESTRICT_GEOFENCING_PSEUDO_ID) else emptySet()
         ) { _ ->
             AntiModificationsUnlock.attempt(this, g) { it.copy(lockRestrictGeofencing = false) }
+        }
+
+        // Delayed-unlock on-screen weighting factor (singleton): one row when locked.
+        renderItemSection(
+            binding.sectionDelayedUnlockWeight,
+            lookup = mapOf(DELAYED_UNLOCK_WEIGHT_PSEUDO_ID to getString(R.string.anti_modifications_delayed_unlock_weight_item_label)),
+            ids = if (g.lockDelayedUnlockWeight) setOf(DELAYED_UNLOCK_WEIGHT_PSEUDO_ID) else emptySet()
+        ) { _ ->
+            AntiModificationsUnlock.attempt(this, g) { it.copy(lockDelayedUnlockWeight = false) }
         }
     }
 

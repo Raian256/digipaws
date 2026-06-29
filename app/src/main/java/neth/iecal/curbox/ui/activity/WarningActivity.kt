@@ -117,7 +117,33 @@ val warningScreenConfig = Gson().fromJson<AppBlockerWarningScreenConfig>(
         val isDialogCancelable =
             mode != Constants.WARNING_SCREEN_MODE_APP_BLOCKER || isHomePressRequested
 
-        if (warningScreenConfig.isProceedDisabled || isProceedLimitExceeded) {
+        // A wait can already be running for this app (scheduled earlier and not
+        // yet elapsed). The service passes its ready-at time so we can show the
+        // remaining wait instead of letting the user start a second one.
+        val pendingUnlockAt = intent.getLongExtra("pending_unlock_at", 0L)
+        val isWaitPending = pendingUnlockAt > System.currentTimeMillis()
+
+        // Delayed unlock: pick a duration, then wait off-screen. Only meaningful
+        // for the app blocker; reels (view blocker) stay on the instant flow.
+        val useDelayedUnlock = warningScreenConfig.isDelayedUnlockEnabled &&
+            mode == Constants.WARNING_SCREEN_MODE_APP_BLOCKER &&
+            !warningScreenConfig.isProceedDisabled &&
+            !isProceedLimitExceeded &&
+            !isWaitPending
+
+        if (isWaitPending) {
+            val remainingMn = (pendingUnlockAt - System.currentTimeMillis() + 59_999) / 60_000L
+            binding.btnProceed.visibility = View.GONE
+            binding.minsPicker.visibility = View.GONE
+            binding.proceedSeconds.visibility = View.VISIBLE
+            binding.proceedSeconds.text =
+                "Unlock already on the way — ready in about $remainingMn min. You can leave this screen; use the notification to stop the wait."
+        } else if (useDelayedUnlock) {
+            binding.minsPicker.visibility = View.VISIBLE
+            binding.proceedSeconds.visibility = View.GONE
+            binding.btnProceed.isEnabled = true
+            binding.btnProceed.text = getString(R.string.start_wait)
+        } else if (warningScreenConfig.isProceedDisabled || isProceedLimitExceeded) {
             binding.btnProceed.visibility = View.GONE
             if (isProceedLimitExceeded) {
                 binding.proceedSeconds.visibility = View.VISIBLE
@@ -229,6 +255,14 @@ val warningScreenConfig = Gson().fromJson<AppBlockerWarningScreenConfig>(
         binding.warningDetails.text =
             buildWarningDetails(mode, targetLabel, warningScreenConfig, isProceedLimitExceeded)
 
+        if (isWaitPending) {
+            binding.warningDetails.text =
+                "You've already started a wait to unlock $targetLabel. It will open on its own once the wait is over."
+        } else if (useDelayedUnlock) {
+            binding.warningDetails.text =
+                "Choose how long to unlock for below, then start the wait. You'll wait off-screen — about your choice × ${warningScreenConfig.delayedUnlockFactor}, and never less than ${warningScreenConfig.delayedUnlockMinWaitMn} min — before access opens. You can leave and do other things; a notification lets you stop it."
+        }
+
         val customMessage = warningScreenConfig.message.trim()
         if (customMessage.isEmpty()) {
             binding.warningMsg.visibility = View.GONE
@@ -251,6 +285,37 @@ val warningScreenConfig = Gson().fromJson<AppBlockerWarningScreenConfig>(
         }
 
         binding.btnProceed.setOnClickListener {
+            if (useDelayedUnlock) {
+                val chosenMillis = binding.minsPicker.getValue() * 60_000L
+                val waitMillis = maxOf(
+                    (chosenMillis * warningScreenConfig.delayedUnlockFactor).toLong(),
+                    warningScreenConfig.delayedUnlockMinWaitMn * 60_000L
+                )
+                val scheduleIntent = Intent(AppBlocker.INTENT_ACTION_SCHEDULE_DELAYED_UNLOCK).apply {
+                    setPackage(this@WarningActivity.packageName)
+                    putExtra("result_id", targetId)
+                    putExtra("delayed_chosen_ms", chosenMillis)
+                    putExtra("delayed_wait_ms", waitMillis)
+                }
+                sendBroadcast(scheduleIntent)
+
+                val waitMn = (waitMillis + 59_999) / 60_000L
+                Toast.makeText(
+                    this@WarningActivity,
+                    "Unlock scheduled — wait about $waitMn min. You'll be notified when it's ready.",
+                    Toast.LENGTH_LONG
+                ).show()
+
+                val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+                    addCategory(Intent.CATEGORY_HOME)
+                    setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                startActivity(homeIntent)
+                dialog?.dismiss()
+                finishAffinity()
+                return@setOnClickListener
+            }
+
             if (warningScreenConfig.isQrUnlockRequirementEnabled && !isQrScanned) {
                 val options = ScanOptions()
                 options.setDesiredBarcodeFormats(ScanOptions.ALL_CODE_TYPES)

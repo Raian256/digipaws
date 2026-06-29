@@ -45,5 +45,16 @@ data class Settings(
      * the protection close that door against their future self by refusing to
      * expand the geofenced surface any further.
      */
-    val restrictNewGeofencing: Boolean = false
+    val restrictNewGeofencing: Boolean = false,
+    /**
+     * Weighting factor that favors an on-screen wait over a delayed (off-screen)
+     * unlock when a package is covered by groups of both kinds. Staring at the
+     * warning screen for N seconds is more friction than waiting N seconds while
+     * free to do other things, so when deciding which mode is "stricter" the
+     * on-screen wait is multiplied by this factor (>= 1 means it counts for more).
+     *
+     * Used by [neth.iecal.curbox.blockers.AppBlocker]'s warning-config merge.
+     * Lockable via an Anti-Modifications group.
+     */
+    val delayedUnlockOnScreenWeight: Float = 2.0f
 )
