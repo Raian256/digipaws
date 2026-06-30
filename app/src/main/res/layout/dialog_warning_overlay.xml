@@ -6,105 +6,119 @@
     android:orientation="vertical"
     android:padding="8dp">
 
-    <TextView
-        android:id="@+id/warning_title"
-        style="@style/TextAppearance.Material3.HeadlineSmall"
+    <ScrollView
+        android:id="@+id/warning_scroll"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:gravity="center"
-        android:padding="8dp"
-        android:textStyle="bold"
-        tools:text="Instagram is blocked" />
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
 
-    <TextView
-        android:id="@+id/warning_details"
-        style="@style/TextAppearance.Material3.BodyMedium"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:layout_marginHorizontal="8dp"
-        android:layout_marginTop="4dp"
-        android:gravity="center"
-        tools:text="You opened Instagram, which you've chosen to restrict.\n\nProceeding unlocks access for 5 min." />
-
-    <TextView
-        android:id="@+id/warning_msg"
-        style="@style/TextAppearance.Material3.TitleMedium"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:gravity="center"
-        android:padding="8dp"
-        android:layout_marginTop="8dp"
-        android:textStyle="italic"
-        android:visibility="gone"
-        tools:text="Custom message" />
-
-    <neth.iecal.curbox.views.HorizontalNumberPicker
-        android:id="@+id/mins_picker"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:layout_marginTop="8dp"
-        android:gravity="center"
-        android:visibility="gone">
-
-    </neth.iecal.curbox.views.HorizontalNumberPicker>
-
-    <TextView
-        android:id="@+id/proceed_seconds"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:layout_marginBottom="16dp"
-        android:gravity="center"
-        android:text="@string/proceed_in" />
-
-    <TextView
-        android:id="@+id/typing_target_sentence"
-        style="@style/TextAppearance.Material3.BodyMedium"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:layout_marginEnd="8dp"
-        android:layout_marginTop="8dp"
-        android:gravity="center"
-        android:visibility="gone"
-        android:textStyle="italic" />
-
-    <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/typing_input_layout"
-        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_margin="8dp"
-        android:visibility="gone"
-        android:hint="Type the exact sentence above">
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/typing_input_edit"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
-    </com.google.android.material.textfield.TextInputLayout>
-
-    <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/intent_input_layout"
-        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_margin="8dp"
-        android:visibility="gone"
-        android:hint="Why do you need to use this app?">
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/intent_input_edit"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:inputType="textMultiLine"
-            android:minLines="3"
-            android:gravity="top" />
-    </com.google.android.material.textfield.TextInputLayout>
+            android:orientation="vertical">
 
+            <TextView
+                android:id="@+id/warning_title"
+                style="@style/TextAppearance.Material3.HeadlineSmall"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:gravity="center"
+                android:padding="8dp"
+                android:textStyle="bold"
+                tools:text="Instagram is blocked" />
 
+            <TextView
+                android:id="@+id/warning_details"
+                style="@style/TextAppearance.Material3.BodyMedium"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_marginHorizontal="8dp"
+                android:layout_marginTop="4dp"
+                android:gravity="center"
+                tools:text="Proceeding unlocks access for 5 min." />
+
+            <TextView
+                android:id="@+id/warning_msg"
+                style="@style/TextAppearance.Material3.TitleMedium"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:gravity="center"
+                android:padding="8dp"
+                android:layout_marginTop="8dp"
+                android:textStyle="italic"
+                android:visibility="gone"
+                tools:text="Custom message" />
+
+            <neth.iecal.curbox.views.HorizontalNumberPicker
+                android:id="@+id/mins_picker"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_marginTop="8dp"
+                android:gravity="center"
+                android:visibility="gone">
+
+            </neth.iecal.curbox.views.HorizontalNumberPicker>
+
+            <TextView
+                android:id="@+id/proceed_seconds"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="16dp"
+                android:gravity="center"
+                android:text="@string/proceed_in" />
+
+            <TextView
+                android:id="@+id/typing_target_sentence"
+                style="@style/TextAppearance.Material3.BodyMedium"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"
+                android:layout_marginTop="8dp"
+                android:gravity="center"
+                android:visibility="gone"
+                android:textStyle="italic" />
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/typing_input_layout"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="8dp"
+                android:visibility="gone"
+                android:hint="Type the exact sentence above">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/typing_input_edit"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/intent_input_layout"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="8dp"
+                android:visibility="gone"
+                android:hint="Why do you need to use this app?">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/intent_input_edit"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="textMultiLine"
+                    android:minLines="3"
+                    android:gravity="top" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+        </LinearLayout>
+
+    </ScrollView>
 
     <Button
         android:id="@+id/btn_proceed"

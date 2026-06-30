@@ -252,13 +252,17 @@ val warningScreenConfig = Gson().fromJson<AppBlockerWarningScreenConfig>(
             else -> "Access blocked"
         }
 
-        binding.warningDetails.text =
+        val warningDetails =
             buildWarningDetails(mode, targetLabel, warningScreenConfig, isProceedLimitExceeded)
+        binding.warningDetails.text = warningDetails
+        binding.warningDetails.visibility = if (warningDetails.isEmpty()) View.GONE else View.VISIBLE
 
         if (isWaitPending) {
+            binding.warningDetails.visibility = View.VISIBLE
             binding.warningDetails.text =
                 "You've already started a wait to unlock $targetLabel. It will open on its own once the wait is over."
         } else if (useDelayedUnlock) {
+            binding.warningDetails.visibility = View.VISIBLE
             binding.warningDetails.text =
                 "Choose how long to unlock for below, then start the wait. You'll wait off-screen — about your choice × ${warningScreenConfig.delayedUnlockFactor}, and never less than ${warningScreenConfig.delayedUnlockMinWaitMn} min — before access opens. You can leave and do other things; a notification lets you stop it."
         }
@@ -433,11 +437,11 @@ val warningScreenConfig = Gson().fromJson<AppBlockerWarningScreenConfig>(
         isProceedLimitExceeded: Boolean
     ): String {
         if (config.isProceedDisabled) {
-            return "You've chosen to restrict this. Bypassing is disabled — close this and step away."
+            return "Bypassing is disabled — close this and step away."
         }
         if (isProceedLimitExceeded) {
             // The remaining-time message is shown separately in proceedSeconds.
-            return "You've chosen to restrict this."
+            return ""
         }
 
         val detail = StringBuilder(
