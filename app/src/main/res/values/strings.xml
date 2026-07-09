@@ -421,21 +421,31 @@ All three locks share the same unlock modes: <b>password</b>, <b>timed</b> (lock
 ]]></string>
 
     <!-- Onboarding permissions header -->
-    <string name="onboarding_permissions_title">Permissions</string>
-    <string name="onboarding_permissions_subtitle">Curbox needs these to detect and block apps. Grant them in order.</string>
     <string name="display_over_other_apps">Display over other apps</string>
     <string name="usage_access">Usage Access</string>
     <string name="send_notifications">Send Notifications</string>
     <string name="app_blocker_accessibility">App Blocker (Accessibility)</string>
     <string name="usage_tracker_accessibility">Usage Tracker (Accessibility)</string>
     <string name="device_admin_access">Device Admin (Anti-Uninstall)</string>
+    <string name="dnd_access">Do Not Disturb Access</string>
     <string name="device_admin_rationale">Curbox needs Device Admin so it cannot be easily uninstalled in a moment of weakness, protecting your commitment to your goals. You can revoke this at any time from within Curbox.</string>
     <string name="device_admin_required_title">Device Admin Required</string>
     <string name="device_admin_required_message">Curbox needs Device Admin permission to keep protecting you from impulsive uninstalls. Please re-enable it to continue.</string>
     <string name="enable">Enable</string>
     <string name="do_you_want_to_restore_a">Do you want to restore a previously saved backup? You won\'t be allowed to restore later.</string>
     <string name="restore_backup">Restore Backup</string>
-    <string name="enable_permissions">Enable Permissions</string>
+    <string name="onboarding_grant_permission">Grant Permission</string>
+    <string name="onboarding_finish_setup">Finish Setup</string>
+    <string name="onboarding_permission_granted">Granted</string>
+    <string name="onboarding_permission_not_granted">Not granted yet</string>
+    <string name="onboarding_permission_step_counter">Permission %1$d of %2$d</string>
+    <string name="onboarding_perm_rationale_overlay">Curbox needs permission to draw over other apps so it can show the warning/pause screen over a blocked app when you open it.</string>
+    <string name="onboarding_perm_rationale_usage_access">Curbox uses usage access to tell which app is in the foreground so it can act when you open a blocked app.</string>
+    <string name="onboarding_perm_rationale_notifications">Curbox needs notification permission to run reliably in the background and to post its status and reminders.</string>
+    <string name="onboarding_perm_rationale_dnd">Curbox needs Do Not Disturb access to mute distractions automatically during focus sessions.</string>
+    <string name="onboarding_perm_rationale_usage_tracker">Curbox uses the accessibility service to measure screen time and reel scrolling for the usage statistics.</string>
+    <string name="onboarding_perm_rationale_app_blocker">Curbox uses the accessibility service to detect when a blocked app is launched and to draw the blocker screen. This is required for app blocking to work.</string>
+    <string name="onboarding_perm_rationale_device_admin">Device Admin lets Curbox resist being uninstalled while anti-uninstall is active. You can revoke it later from within Curbox.</string>
     <string name="add_widget_to_homescreen">Add Widget to Homescreen</string>
     <string name="export_data_as_csv">Export Data as CSV</string>
     <string name="usage">Usage</string>

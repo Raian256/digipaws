@@ -1,5 +1,7 @@
 package neth.iecal.curbox.ui.fragments.installation.onboarding
 
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -10,13 +12,18 @@ import androidx.fragment.app.Fragment
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import neth.iecal.curbox.R
 import neth.iecal.curbox.databinding.FragmentOnboardingBinding
+import neth.iecal.curbox.ui.activity.FragmentActivity
 import neth.iecal.curbox.ui.fragments.installation.onboarding.screens.OnboardingInfoFragment
-import neth.iecal.curbox.ui.fragments.installation.onboarding.screens.OnboardingPermissionsFragment
+import neth.iecal.curbox.ui.fragments.installation.onboarding.screens.OnboardingPermissionFragment
+import neth.iecal.curbox.ui.fragments.main.usage.AllAppsUsageFragment
 
 class OnboardingFragment : Fragment() {
 
     companion object {
         const val FRAGMENT_ID = "onboarding_fragment"
+
+        // Number of intro pages shown before the per-permission pages.
+        private const val INFO_PAGE_COUNT = 3
     }
 
     private var _binding: FragmentOnboardingBinding? = null
@@ -51,13 +58,31 @@ class OnboardingFragment : Fragment() {
         }
     }
 
+    /**
+     * Called from the final permission step once every permission has been
+     * granted. Marks onboarding complete and opens the main app.
+     */
+    fun finishOnboarding() {
+        val sharedPreferences =
+            requireContext().getSharedPreferences("AppPreferences", Context.MODE_PRIVATE)
+        sharedPreferences.edit().putBoolean("isFirstLaunchComplete", true).apply()
+
+        val intent = Intent(requireContext(), FragmentActivity::class.java).apply {
+            putExtra("fragment", AllAppsUsageFragment.FRAGMENT_ID)
+        }
+        startActivity(intent)
+    }
+
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
     }
 
     private inner class OnboardingPagerAdapter(fragment: Fragment) : FragmentStateAdapter(fragment) {
-        override fun getItemCount(): Int = 4
+        // Three intro pages followed by one page per permission.
+        private val permissionSteps = OnboardingPermissionFragment.PermissionStep.ORDER
+
+        override fun getItemCount(): Int = INFO_PAGE_COUNT + permissionSteps.size
 
         override fun createFragment(position: Int): Fragment {
             return when (position) {
@@ -73,7 +98,8 @@ class OnboardingFragment : Fragment() {
                     R.string.onboarding_selfbind_title,
                     R.string.onboarding_selfbind_body
                 )
-                3 -> OnboardingPermissionsFragment()
+                in INFO_PAGE_COUNT until itemCount ->
+                    OnboardingPermissionFragment.newInstance(permissionSteps[position - INFO_PAGE_COUNT])
                 else -> throw IllegalArgumentException("Invalid position $position")
             }
         }
